@@ -15,13 +15,12 @@ class GlyphProvider:
 
     def __get_glyph_path(self, label: decimal.Decimal) -> str:
         return self.__manifest.get_glyph_filename(label)
-        
 
-    def get_glyph_bytes(self, label: decimal.Decimal) -> bytes:
+    def get_glyph_as_bytes(self, label: decimal.Decimal) -> bytes:
         return self.__archive.read(self.__get_glyph_path(label))
 
     def get_glyph_as_pil_image(self, label: decimal.Decimal) -> Image.Image:
-        glyph_bytes = self.get_glyph_bytes(label)
+        glyph_bytes = self.get_glyph_as_bytes(label)
         return Image.open(BytesIO(glyph_bytes))
 
     def close(self):

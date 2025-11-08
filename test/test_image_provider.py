@@ -13,7 +13,7 @@ def glyph_provider():
 
 def test_get_glyph_bytes(glyph_provider: GlyphProvider):
     label = Decimal(1.0)
-    glyph_bytes = glyph_provider.get_glyph_bytes(label)
+    glyph_bytes = glyph_provider.get_glyph_as_bytes(label)
     assert isinstance(glyph_bytes, bytes)
     assert len(glyph_bytes) > 0
 
