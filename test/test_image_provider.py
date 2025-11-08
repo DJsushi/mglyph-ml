@@ -24,3 +24,7 @@ def test_get_glyph_as_pil_image(glyph_provider):
     assert image.format == "PNG"
     assert image.size[0] > 0 and image.size[1] > 0
     assert image.mode in ["RGB", "RGBA", "L"]
+
+def test_glyph_size(glyph_provider):
+    size = glyph_provider.glyph_size
+    assert size == (512, 512)
