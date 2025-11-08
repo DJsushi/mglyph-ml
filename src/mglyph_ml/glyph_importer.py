@@ -8,11 +8,15 @@ from PIL import Image
 from mglyph_ml.manifest_parsing import Manifest, ManifestImage
 
 
-class GlyphProvider:
+class GlyphImporter:
     def __init__(self, archive_path: str) -> None:
         self.__archive: zipfile.ZipFile = zipfile.ZipFile(archive_path, "r")
         manifest = self.__archive.read("metadata.json")
         self.__manifest = Manifest.model_validate_json(manifest)
+
+    def get_glyph_xvalue_by_index(self, index: int) -> Decimal:
+        image: ManifestImage = self.__manifest.images[index]
+        return Decimal(image.x)
 
     def __get_glyph_path(self, label: Decimal) -> str:
         return self.__manifest.get_glyph_filename(label)
