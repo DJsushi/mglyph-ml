@@ -36,7 +36,6 @@ class GlyphDataset(Dataset):
 
     def __getitem__(self, index: int) -> GlyphSample:
         image_pil = self.__glyph_provider.get_glyph_at_index_as_pil_image(index)
-        # If image has alpha channel, paste onto white background
         
         img_np = np.array(img_pil)  # H x W x C, dtype=uint8, values 0-255
         # Apply augmentation on HWC uint8 image

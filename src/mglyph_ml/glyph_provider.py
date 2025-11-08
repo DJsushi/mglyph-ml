@@ -29,7 +29,7 @@ class GlyphProvider:
         '''
         glyph_bytes = self.get_glyph_as_bytes(label)
         image = Image.open(BytesIO(glyph_bytes))
-        
+
         if image.mode in ("RGBA", "LA"):
             background = Image.new("RGBA", image.size, (255, 255, 255, 255))
             background.paste(image, mask=image.split()[-1])
@@ -48,11 +48,6 @@ class GlyphProvider:
         first_image = self.__manifest.images[0]
         pil_image = self.get_glyph_as_pil_image(Decimal(first_image.x))
         return pil_image.width, pil_image.height
-
-    @cached_property
-    def step_size(self) -> Decimal:
-        print(len(self.__manifest.images))
-        return Decimal(100) / Decimal(len(self.__manifest.images) - 1)
 
     @cached_property
     def size(self) -> int:
