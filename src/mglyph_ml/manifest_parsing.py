@@ -8,7 +8,7 @@ from pyparsing import cached_property
 
 class ManifestImage(BaseModel):
     filename: str
-    x: float
+    x: Decimal
 
 
 class Manifest(BaseModel):
@@ -31,7 +31,7 @@ class Manifest(BaseModel):
         if all(isinstance(i, ManifestImage) for i in value):
             return value
         # If it's a list of [filename, x]
-        return [ManifestImage(filename=fn, x=x) for fn, x in value]
+        return [ManifestImage(filename=filename, x=Decimal(x)) for filename, x in value]
 
     def get_glyph_filename(self, x: Decimal) -> str:
         return self.__images_dict[x]

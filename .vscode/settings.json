@@ -1,5 +1,6 @@
 {
     "python.testing.pytestArgs": [
+        "--capture=sys",
         "test"
     ],
     "python.testing.unittestEnabled": false,

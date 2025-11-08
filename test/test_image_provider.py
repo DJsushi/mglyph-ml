@@ -2,7 +2,7 @@ from decimal import Decimal
 
 import pytest
 
-from mglyph_ml.image_provider import GlyphProvider
+from mglyph_ml.glyph_provider import GlyphProvider
 
 
 @pytest.fixture
@@ -28,3 +28,7 @@ def test_get_glyph_as_pil_image(glyph_provider):
 def test_glyph_size(glyph_provider):
     size = glyph_provider.glyph_size
     assert size == (512, 512)
+
+def test_step_size(glyph_provider):
+    step_size = glyph_provider.step_size
+    assert step_size == Decimal(1.0)
