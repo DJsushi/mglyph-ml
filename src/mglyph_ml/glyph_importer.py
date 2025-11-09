@@ -54,7 +54,7 @@ class GlyphImporter:
         return pil_image.width, pil_image.height
 
     @cached_property
-    def size(self) -> int:
+    def count(self) -> int:
         return len(self.__manifest.images)
 
     def close(self) -> None:
