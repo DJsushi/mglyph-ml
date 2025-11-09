@@ -1,3 +1,5 @@
+from functools import cached_property
+import math
 import random
 from dataclasses import dataclass
 from decimal import Decimal
@@ -24,24 +26,36 @@ class GlyphDataset(Dataset):
 
     def __init__(
         self,
-        glyph_importer: GlyphImporter,
+        *glyph_importers: GlyphImporter,
         augment: bool = True,
         normalize: bool = True,
     ):
-        self.__glyph_provider = glyph_importer
+        self.__glyph_importers = glyph_importers
         self.__set_up_augmentation(augment, normalize)
+        # calculate the number of samples just once and cache it
+        self.__len = sum([importer.count for importer in self.__glyph_importers])
 
     def __len__(self) -> int:
-        return self.__glyph_provider.count
+        return self.__len
 
     def __getitem__(self, index: int) -> tuple:
-        label = self.__glyph_provider.get_glyph_xvalue_by_index(index)
+        importer, start_index = self.__get_glyph_importer_based_on_index(index)
+        index -= start_index
+        label = importer.get_glyph_xvalue_by_index(index)
         label /= Decimal(100.0)
-        image_pil = self.__glyph_provider.get_glyph_at_index_as_pil_image(index)
-        image_np = np.asarray(image_pil)
+        image_pil = importer.get_glyph_at_index_as_pil_image(index)
+        image_np = np.asarray(image_pil)  # outputs [H, W, C]
         image_augmented: np.ndarray = self.__transform(image=image_np)["image"]
-        image_tensor = Tensor(image_augmented).permute(2, 1, 0)
+        image_tensor = Tensor(image_augmented).permute(2, 0, 1)  # permute [H, W, C] -> [C, H, W]
         return image_tensor, torch.tensor(float(label), dtype=torch.float32)
+    
+    def __get_glyph_importer_based_on_index(self, index: int) -> tuple[GlyphImporter, int]:
+        cumulative_count = 0
+        for importer in self.__glyph_importers:
+            cumulative_count += importer.count
+            if index < cumulative_count:
+                return importer, cumulative_count
+        raise IndexError("Index out of range")
 
     def get_random_samples(self, n: int) -> list[GlyphSample]:
         indices = random.sample(range(len(self)), n)
