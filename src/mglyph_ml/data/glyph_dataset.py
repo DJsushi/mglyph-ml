@@ -1,3 +1,4 @@
+from copy import deepcopy
 from functools import cached_property
 import math
 import random
@@ -29,8 +30,10 @@ class GlyphDataset(Dataset):
         *glyph_importers: GlyphImporter,
         augment: bool = True,
         normalize: bool = True,
+        augmentation_seed: int | None = None,
     ):
         self.__glyph_importers = glyph_importers
+        self.__augmentation_seed = augmentation_seed
         self.__set_up_augmentation(augment, normalize)
         # calculate the number of samples just once and cache it
         self.__len = sum([importer.count for importer in self.__glyph_importers])
@@ -47,14 +50,18 @@ class GlyphDataset(Dataset):
         image_pil = importer.get_glyph_at_index_as_pil_image(index)
         image_np = np.asarray(image_pil)  # outputs [H, W, C]
         image_augmented: np.ndarray = self.__transform(image=image_np)["image"]
-        image_tensor = Tensor(image_augmented).permute(2, 0, 1)  # permute [H, W, C] -> [C, H, W]
+        image_tensor = Tensor(image_augmented).permute(
+            2, 0, 1
+        )  # permute [H, W, C] -> [C, H, W]
         # TODO: this type of normalization is actually somehow worse than dividing by 255.0
         # normalize the image by dividing by 255.0
         # if self.__normalize:
         #     image_tensor /= 255.0
         return image_tensor, torch.tensor(float(label), dtype=torch.float32)
-    
-    def __get_glyph_importer_based_on_index(self, index: int) -> tuple[GlyphImporter, int]:
+
+    def __get_glyph_importer_based_on_index(
+        self, index: int
+    ) -> tuple[GlyphImporter, int]:
         cumulative_count = 0
         for importer in self.__glyph_importers:
             cumulative_count += importer.count
@@ -77,4 +84,10 @@ class GlyphDataset(Dataset):
             p=float(augment),
         )
         step2 = A.Normalize(normalization="image", p=float(normalize))
-        self.__transform = A.Compose([step1, step2])
+        self.__original_transform = A.Compose(
+            [step1, step2], seed=self.__augmentation_seed
+        )
+        self.reset_transform()
+
+    def reset_transform(self):
+        self.__transform = deepcopy(self.__original_transform)
