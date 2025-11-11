@@ -34,6 +34,7 @@ class GlyphDataset(Dataset):
         self.__set_up_augmentation(augment, normalize)
         # calculate the number of samples just once and cache it
         self.__len = sum([importer.count for importer in self.__glyph_importers])
+        self.__normalize = normalize
 
     def __len__(self) -> int:
         return self.__len
@@ -47,6 +48,10 @@ class GlyphDataset(Dataset):
         image_np = np.asarray(image_pil)  # outputs [H, W, C]
         image_augmented: np.ndarray = self.__transform(image=image_np)["image"]
         image_tensor = Tensor(image_augmented).permute(2, 0, 1)  # permute [H, W, C] -> [C, H, W]
+        # TODO: this type of normalization is actually somehow worse than dividing by 255.0
+        # normalize the image by dividing by 255.0
+        # if self.__normalize:
+        #     image_tensor /= 255.0
         return image_tensor, torch.tensor(float(label), dtype=torch.float32)
     
     def __get_glyph_importer_based_on_index(self, index: int) -> tuple[GlyphImporter, int]:
