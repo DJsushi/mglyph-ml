@@ -64,9 +64,10 @@ class GlyphDataset(Dataset):
     ) -> tuple[GlyphImporter, int]:
         cumulative_count = 0
         for importer in self.__glyph_importers:
+            start_index = cumulative_count
             cumulative_count += importer.count
             if index < cumulative_count:
-                return importer, cumulative_count
+                return importer, start_index
         raise IndexError("Index out of range")
 
     def get_random_samples(self, n: int) -> list[GlyphSample]:
