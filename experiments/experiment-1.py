@@ -1,32 +1,17 @@
-import math
-import os
 import random
-import zipfile
-from importlib import reload
-from io import BytesIO
 
-import ipywidgets
-import matplotlib.pyplot as plt
 import mglyph as mg
 import numpy as np
 import torch
-import torchvision
-import torchvision.transforms.functional as TF
 from clearml import Task
-from IPython.display import clear_output, display
-from matplotlib import pyplot as plt
-from PIL import Image
-from torch import Tensor, nn
+from torch import nn
 from torch.utils.data import DataLoader, Dataset, Subset
-from torchvision.io import ImageReadMode
 
-import mglyph_ml
 import mglyph_ml.lib as lib
-from mglyph_ml.data.glyph_dataset import GlyphDataset, GlyphSample
+from mglyph_ml.data.glyph_dataset import GlyphDataset
 from mglyph_ml.glyph_importer import GlyphImporter
-from mglyph_ml.manifest_parsing import Manifest
 from mglyph_ml.nn.glyph_regressor_gen2 import GlyphRegressor
-from mglyph_ml.nn.training import train_model, train_one_epoch
+from mglyph_ml.nn.training import train_model
 from mglyph_ml.visualization import visualize_samples
 
 task: Task = Task.init(
@@ -42,7 +27,7 @@ params = {
     "seed": 69,
     "max_iterations": 30,
     "max_augment_rotation_degrees": 5,
-    "max_augment_translation_percent": 0.05
+    "max_augment_translation_percent": 0.05,
 }
 task.connect(params)
 
@@ -121,7 +106,10 @@ importers_train = [
     GlyphImporter(f"data/glyphs-experiment-1/{glyph}") for glyph in glyphs_train
 ]
 dataset_train: Dataset = GlyphDataset(
-    *importers_train, augmentation_seed=params["seed"]
+    *importers_train,
+    augmentation_seed=params["seed"],
+    max_augment_rotation_degrees=params["max_augment_rotation_degrees"],
+    max_augment_translation_percent=params["max_augment_translation_percent"],
 )
 
 glyphs_test = ["test-square.mglyph", "test-triangle.mglyph", "test-circle.mglyph"]
