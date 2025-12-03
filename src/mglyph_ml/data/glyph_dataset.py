@@ -31,6 +31,8 @@ class GlyphDataset(Dataset):
         augment: bool = True,
         normalize: bool = True,
         augmentation_seed: int | None = None,
+        max_augment_rotation_degrees: float = 5.0,
+        max_augment_translation_percent: float = 0.05,
     ):
         self.__glyph_importers = glyph_importers
         self.__augmentation_seed = augmentation_seed
@@ -38,6 +40,8 @@ class GlyphDataset(Dataset):
         # calculate the number of samples just once and cache it
         self.__len = sum([importer.count for importer in self.__glyph_importers])
         self.__normalize = normalize
+        self.__max_augment_rotation_degrees = max_augment_rotation_degrees
+        self.__max_augment_translation_percent = max_augment_translation_percent
 
     def __len__(self) -> int:
         return self.__len
@@ -76,8 +80,14 @@ class GlyphDataset(Dataset):
 
     def __set_up_augmentation(self, augment: bool, normalize: bool) -> None:
         step1 = A.Affine(
-            rotate=(-15, 15),
-            translate_percent=(-0.10, 0.10),
+            rotate=(
+                -self.__max_augment_rotation_degrees,
+                self.__max_augment_rotation_degrees,
+            ),
+            translate_percent=(
+                -self.__max_augment_translation_percent,
+                self.__max_augment_translation_percent,
+            ),
             fit_output=False,
             keep_ratio=True,
             border_mode=cv2.BORDER_CONSTANT,
@@ -86,7 +96,7 @@ class GlyphDataset(Dataset):
         )
         step2 = A.Normalize(normalization="min_max", p=float(normalize))
         self.__original_transform = A.Compose(
-            [step1, step2], seed=self.__augmentation_seed #temporarily removed step2
+            [step1, step2], seed=self.__augmentation_seed  # temporarily removed step2
         )
         self.reset_transform()
 

@@ -41,6 +41,8 @@ params = {
     "quick": False,  # whether to speedrun the training for testing purposes
     "seed": 69,
     "max_iterations": 30,
+    "max_augment_rotation_degrees": 5,
+    "max_augment_translation_percent": 0.05
 }
 task.connect(params)
 
