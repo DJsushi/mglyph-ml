@@ -20,4 +20,5 @@ def export_glyph(
         version="1.0.0",
         path=str(path),
         xvalues=xvalues,
+        silent=True
     )

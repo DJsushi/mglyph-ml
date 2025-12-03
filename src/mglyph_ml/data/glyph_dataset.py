@@ -84,9 +84,9 @@ class GlyphDataset(Dataset):
             fill=255,
             p=float(augment),
         )
-        step2 = A.Normalize(normalization="image", p=float(normalize))
+        step2 = A.Normalize(normalization="min_max", p=float(normalize))
         self.__original_transform = A.Compose(
-            [step1, step2], seed=self.__augmentation_seed
+            [step1, step2], seed=self.__augmentation_seed #temporarily removed step2
         )
         self.reset_transform()
 

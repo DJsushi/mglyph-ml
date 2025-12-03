@@ -4,6 +4,7 @@ import torch
 import random
 import numpy as np
 import matplotlib.pyplot as plt
+from IPython.display import clear_output, display
 from mglyph_ml.data.glyph_dataset import GlyphDataset
 from mglyph_ml.glyph_importer import GlyphImporter
 
@@ -43,6 +44,45 @@ def train_one_epoch(
 
     avg_loss = running_loss / num_batches if num_batches > 0 else 0.0
     avg_error = running_error / num_batches if num_batches > 0 else 0.0
+    return avg_loss, avg_error
+
+
+def evaluate_glyph_regressor(
+    model: nn.Module, 
+    data_loader: DataLoader, 
+    device: str, 
+    criterion
+) -> tuple[float, float]:
+    """
+    Takes a glyph regressor, temporarily disables gradient calculation, and calculates the average
+    loss on the given dataset (DataLoader). Processes in batches on GPU for efficiency.
+
+    Returns a tuple containing the average loss and average error (mean absolute error)
+    """
+    model.eval()  # Set model to evaluation mode
+    running_loss = 0.0
+    running_error = 0.0
+    num_batches = 0
+    
+    with torch.no_grad():
+        for inputs, labels in data_loader:
+            inputs = inputs.to(device)
+            labels = labels.to(device)
+            labels = labels.view(-1, 1)
+            
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            
+            # Calculate error as the average absolute difference (y_hat - y)
+            error = torch.mean(torch.abs(outputs - labels)).item()
+            
+            running_loss += loss.item()
+            running_error += error
+            num_batches += 1
+    
+    avg_loss = running_loss / num_batches if num_batches > 0 else 0.0
+    avg_error = running_error / num_batches if num_batches > 0 else 0.0
+    model.train()  # Set model back to training mode
     return avg_loss, avg_error
 
 
@@ -125,49 +165,123 @@ def visualize_test_predictions(
     
     plt.tight_layout()
     plt.show()
-    
-    # Print summary statistics
-    print("\nPrediction Summary:")
-    print("=" * 50)
-    
-    with torch.no_grad():
-        for i, sample_idx in enumerate(sample_indices):
-            dataset_test.reset_transform()
-            img_tensor, true_label = dataset_test[sample_idx]
-            img_batch = img_tensor.unsqueeze(0).to(device)
-            pred_label = model(img_batch).item()
-            error = abs((pred_label - true_label) * 100)
-            print(f"Sample {sample_idx}: True={true_label*100:.2f}, Pred={pred_label*100:.2f}, Error={error:.2f}")
-    
-    print(f"\nMean error on these {num_samples} samples: {np.mean(errors):.2f} x units")
-    print(f"Max error: {np.max(errors):.2f} x units")
-    print(f"Min error: {np.min(errors):.2f} x units")
 
 
-def visualize_test_samples(
-    importers: list[GlyphImporter],
+def train_model_with_visualization(
+    model: nn.Module,
+    data_loader_train: DataLoader,
+    data_loader_test: DataLoader,
+    device: str,
+    criterion,
+    optimizer,
+    num_epochs: int = 10,
+    early_stopping_threshold: float = 0.3,
+    figsize: tuple[int, int] = (6, 4),
+    reset_test_transform: bool = True
+) -> tuple[list[float], list[float], list[float], list[float]]:
+    """
+    Train a model with real-time visualization of training progress.
+    
+    Args:
+        model: The neural network model to train
+        data_loader_train: DataLoader for training data
+        data_loader_test: DataLoader for test/validation data
+        device: Device to train on ('cuda' or 'cpu')
+        criterion: Loss function
+        optimizer: Optimizer for training
+        num_epochs: Maximum number of epochs to train (default: 10)
+        early_stopping_threshold: Stop training if test error drops below this value in x units (default: 0.3)
+        figsize: Size of the visualization figure (default: (6, 4))
+        reset_test_transform: Whether to reset test dataset transform before evaluation (default: True)
+    
+    Returns:
+        Tuple of (train_losses, train_errors, test_losses, test_errors) - all as lists
+    """
+    fig, ax1 = plt.subplots(figsize=figsize)
+    ax2 = ax1.twinx()
+    
+    losses = []
+    errors = []
+    test_losses = []
+    test_errors = []
+    
+    # Train for specified number of epochs
+    for epoch in range(num_epochs):
+        loss, error = train_one_epoch(model, data_loader_train, device, criterion, optimizer)
+        error *= 100.0  # Convert normalized error (0-1) to actual x units (0-100)
+        losses.append(loss)
+        errors.append(error)
+        
+        # Reset the dataloader's transform to make the test dataset 100% reproducible
+        if reset_test_transform and hasattr(data_loader_train.dataset, 'reset_transform'):
+            data_loader_train.dataset.reset_transform()
+        if reset_test_transform and hasattr(data_loader_test.dataset, 'reset_transform'):
+            data_loader_test.dataset.reset_transform()
+        
+        test_loss, test_error = evaluate_glyph_regressor(model, data_loader_test, device, criterion)
+        test_error *= 100.0  # Convert normalized error (0-1) to actual x units (0-100)
+        test_losses.append(test_loss)
+        test_errors.append(test_error)
+        
+        # Clear previous plots
+        ax1.clear()
+        ax2.clear()
+        
+        # Plot updated data with markers (dashed lines for loss, solid for error)
+        ax1.plot(range(len(losses)), losses, color='green', label='Train Loss', marker='o', markersize=4, linestyle='--')
+        ax2.plot(range(len(errors)), errors, color='green', label='Train Error', marker='o', markersize=4, linestyle='-')
+        ax1.plot(range(len(test_losses)), test_losses, color='red', label='Test Loss', marker='o', markersize=4, linestyle='--')
+        ax2.plot(range(len(test_errors)), test_errors, color='red', label='Test Error', marker='o', markersize=4, linestyle='-')
+        
+        ax1.grid(True, alpha=0.3)
+        
+        # Set labels and x-axis ticks
+        ax1.set_xlabel('Epoch')
+        ax1.set_ylabel('Loss (MSE)', color='black')
+        ax2.set_ylabel('Error (Mean Absolute Error, x units)', color='black')
+        ax2.yaxis.set_label_position('right')
+        ax1.set_xticks(range(len(losses)))
+        ax1.legend(loc='upper left')
+        ax2.legend(loc='upper right')
+        
+        # Update display
+        clear_output(wait=True)
+        
+        # Early stopping: stop if error is good enough
+        if test_error < early_stopping_threshold:
+            print(f"Early stopping at epoch {epoch+1}: test error {test_error:.4f} x units is below threshold")
+            display(fig)
+            break
+        
+        display(fig)
+    
+    return losses, errors, test_losses, test_errors
+
+
+def visualize_samples(
+    plot_title: str,
+    dataset: GlyphDataset,
     num_samples: int = 9,
     figsize: tuple[int, int] = (6, 6),
-    augmentation_seed: int = 69
-) -> None:
+) -> plt.Figure:
     """
     Visualize random samples from the test dataset (without predictions).
     
     Args:
-        importers: List of GlyphImporter objects for the test set
+        plot_title: Title for the plot
+        dataset: GlyphDataset to visualize samples from
         num_samples: Number of samples to visualize (default: 9 for 3x3 grid)
         figsize: Figure size for the plot (default: (6, 6))
-        augmentation_seed: Random seed for reproducible augmentation (default: 69)
+    
+    Returns:
+        matplotlib.pyplot.Figure: The figure instance that can be displayed later
     
     Displays:
         - Grid of test images with their labels
     """
-    # Create dataset without normalization for clear visualization
-    temp_dataset = GlyphDataset(*importers, normalize=False, augmentation_seed=augmentation_seed)
-    
     # Get random samples
-    temp_dataset.reset_transform()
-    sample_indices = random.sample(range(len(temp_dataset)), num_samples)
+    dataset.reset_transform()
+    sample_indices = random.sample(range(len(dataset)), num_samples)
     
     # Calculate grid dimensions
     ncols = 3
@@ -176,7 +290,7 @@ def visualize_test_samples(
     axes = np.array(axes).reshape(-1)  # Flatten for easy indexing
     
     for index, sample_idx in enumerate(sample_indices):
-        image, label = temp_dataset[sample_idx]
+        image, label = dataset[sample_idx]
         
         # Convert image for display
         img = image.numpy().clip(0, 1).transpose(1, 2, 0)  # [C, H, W] -> [H, W, C]
@@ -189,5 +303,7 @@ def visualize_test_samples(
     for i in range(num_samples, len(axes)):
         axes[i].axis('off')
     
-    plt.tight_layout()
-    plt.show()
+    fig.suptitle(plot_title)
+    fig.tight_layout()
+    
+    return fig
