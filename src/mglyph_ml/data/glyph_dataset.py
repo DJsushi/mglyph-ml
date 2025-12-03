@@ -35,13 +35,13 @@ class GlyphDataset(Dataset):
         max_augment_translation_percent: float = 0.05,
     ):
         self.__glyph_importers = glyph_importers
+        self.__max_augment_rotation_degrees = max_augment_rotation_degrees
+        self.__max_augment_translation_percent = max_augment_translation_percent
         self.__augmentation_seed = augmentation_seed
         self.__set_up_augmentation(augment, normalize)
         # calculate the number of samples just once and cache it
         self.__len = sum([importer.count for importer in self.__glyph_importers])
         self.__normalize = normalize
-        self.__max_augment_rotation_degrees = max_augment_rotation_degrees
-        self.__max_augment_translation_percent = max_augment_translation_percent
 
     def __len__(self) -> int:
         return self.__len

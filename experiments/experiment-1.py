@@ -15,7 +15,7 @@ from mglyph_ml.nn.training import train_model
 from mglyph_ml.visualization import visualize_samples
 
 task: Task = Task.init(
-    project_name="mglyph-ml", task_name="Experiment 1 - all shapes", output_uri=True
+    project_name="mglyph-ml", task_name="Experiment 1 - all shapes - smaller augment", output_uri=True
 )
 logger = task.get_logger()
 
