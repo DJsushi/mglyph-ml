@@ -97,7 +97,7 @@ lib.export_glyph(
     xvalues=list(np_gen.uniform(low=params["start_x"], high=params["end_x"], size=200)),
 )
 
-device = "cuda:3" if torch.cuda.is_available() else "cpu"
+device = "cuda" if torch.cuda.is_available() else "cpu"
 print(device)
 
 
@@ -145,7 +145,7 @@ criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 # Train the model with visualization
-losses, errors, test_losses, test_errors = train_model(
+train_model(
     model=model,
     data_loader_train=data_loader_train,
     data_loader_test=data_loader_test,

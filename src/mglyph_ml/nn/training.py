@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 
 from mglyph_ml.data.glyph_dataset import GlyphDataset
 from mglyph_ml.glyph_importer import GlyphImporter
+from mglyph_ml.visualization import visualize_samples
 
 
 def train_one_epoch(
@@ -87,6 +88,7 @@ def train_model(
         loss, error = train_one_epoch(
             model, data_loader_train, device, criterion, optimizer
         )
+        
         error *= 100.0  # Convert normalized error (0-1) to actual x units (0-100)
         losses.append(loss)
         errors.append(error)
@@ -119,6 +121,14 @@ def train_model(
                 series="Test",
                 value=test_error,
                 iteration=epoch,
+            )
+            fig1 = visualize_samples(plot_title="Training samples", dataset=data_loader_train.dataset) # type: ignore
+            logger.report_matplotlib_figure(
+                title="Training samples", series="Beginning", figure=fig1, report_image=True
+            )
+            fig2 = visualize_samples(plot_title="Test samples", dataset=data_loader_test.dataset) # type: ignore
+            logger.report_matplotlib_figure(
+                title="Test samples", series="Beginning", figure=fig2, report_image=True
             )
 
         # Early stopping: stop if error is good enough

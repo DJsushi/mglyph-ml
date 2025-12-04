@@ -3,15 +3,12 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from IPython.display import clear_output, display
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 from torch import nn
-from torch.utils.data import DataLoader
 
 from mglyph_ml.data.glyph_dataset import GlyphDataset
 from mglyph_ml.glyph_importer import GlyphImporter
-from mglyph_ml.nn.training import evaluate_glyph_regressor, train_one_epoch
 
 
 def visualize_test_predictions(
