@@ -56,9 +56,9 @@ class _DatasetBuilder:
         global_id = 0
         order = len(str(len(self._training_samples) - 1))
 
-        train_samples = []
+        manifest_train_samples = []
         for sample in self._training_samples:
-            train_samples.append(
+            manifest_train_samples.append(
                 ManifestSample(x=sample.x, filename=f"{global_id:0{order}d}.png", metadata=sample.metadata)
             )
             global_id += 1
@@ -73,7 +73,7 @@ class _DatasetBuilder:
         manifest = DatasetManifest(
             name=self._name,
             creation_time=self._creation_time,
-            train_samples=train_samples,
+            train_samples=manifest_train_samples,
             test_samples=[],
         )
 
@@ -82,14 +82,12 @@ class _DatasetBuilder:
         with zipfile.ZipFile(zip_buffer, "w") as zf:
             zf.writestr("manifest.json", manifest.model_dump_json(indent=2))
 
-            # for index, x in enumerate(xvalues):
-            #     image = render(drawer, resolution, x, canvas_parameters, compress="pil")
-            #     data = BytesIO()
-            #     image["pil"].save(data, format="PNG", compress_level=5)
-            #     data.seek(0)
-            #     zf.writestr(f"{index:0{number_of_digits}d}.png", data.read())
-            #     if not silent:
-            #         progress_bar.value = index + 1
+            for sample, manifest_sample in zip(self._training_samples, manifest_train_samples): # + self._testing_samples
+                image = render(sample.drawer, (512, 512), float(sample.x), canvas_parameters, compress="pil") # type: ignore
+                data = BytesIO()
+                image["pil"].save(data, format="PNG", compress_level=5) # type: ignore
+                data.seek(0)
+                zf.writestr(manifest_sample.filename, data.read())
 
         zip_buffer.seek(0)
         if path is not None:
