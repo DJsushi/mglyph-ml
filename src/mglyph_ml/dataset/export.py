@@ -29,21 +29,19 @@ class _Sample:
     drawer: Drawer
     x: Decimal
     metadata: dict
+    split: str
 
 
 class _DatasetBuilder:
     def __init__(self, name: str, creation_time: datetime):
         self._name: str = name
         self._creation_time: datetime = creation_time
-        self._training_samples: list[_Sample] = []
-        self._testing_samples: list[_Sample] = []
+        self._samples: list[_Sample] = []
         self._number_of_samples: int = 0
 
-    def add_training_sample(self, drawer: Drawer, x: Decimal, metadata: dict = {}):
-        self._training_samples.append(_Sample(drawer, x, metadata))
-
-    def add_testing_sample(self, drawer: Drawer, x: Decimal, metadata: dict = {}):
-        self._testing_samples.append(_Sample(drawer, x, metadata))
+    def add_sample(self, drawer: Drawer, x: Decimal, split: str, metadata: dict = {}):
+        """Add a sample to the specified split (e.g., 'train', 'test', 'val')."""
+        self._samples.append(_Sample(drawer, x, metadata, split))
 
     def export(
         self,
@@ -53,34 +51,29 @@ class _DatasetBuilder:
         ),
     ) -> Optional[BytesIO]:
         global_id = 0
-        order = len(str(len(self._training_samples) - 1))
+        order = len(str(len(self._samples) - 1))
 
-        manifest_train_samples = []
-        for sample in self._training_samples:
-            manifest_train_samples.append(
-                ManifestSample(
-                    x=sample.x,
-                    filename=f"{global_id:0{order}d}.png",
-                    metadata=sample.metadata,
-                )
+        # Group samples by split
+        samples_by_split: dict[str, list[ManifestSample]] = {}
+        all_manifest_samples = []
+        
+        for sample in self._samples:
+            manifest_sample = ManifestSample(
+                x=sample.x,
+                filename=f"{global_id:0{order}d}.png",
+                metadata=sample.metadata,
             )
-            global_id += 1
-        manifest_test_samples = []
-        for sample in self._testing_samples:
-            manifest_test_samples.append(
-                ManifestSample(
-                    x=sample.x,
-                    filename=f"{global_id:0{order}d}.png",
-                    metadata=sample.metadata,
-                )
-            )
+            
+            if sample.split not in samples_by_split:
+                samples_by_split[sample.split] = []
+            samples_by_split[sample.split].append(manifest_sample)
+            all_manifest_samples.append(manifest_sample)
             global_id += 1
 
         manifest = DatasetManifest(
             name=self._name,
             creation_time=self._creation_time,
-            train_samples=manifest_train_samples,
-            test_samples=manifest_test_samples,
+            samples=samples_by_split,
         )
 
         zip_buffer = BytesIO()
@@ -89,8 +82,8 @@ class _DatasetBuilder:
             zf.writestr("manifest.json", manifest.model_dump_json(indent=2))
 
             for sample, manifest_sample in zip(
-                self._training_samples + self._testing_samples,
-                manifest_train_samples + manifest_test_samples,
+                self._samples,
+                all_manifest_samples,
             ):
                 image = render(sample.drawer, (512, 512), float(sample.x), canvas_parameters, compress="pil")  # type: ignore
                 data = BytesIO()

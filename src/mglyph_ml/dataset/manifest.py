@@ -14,17 +14,6 @@ class ManifestSample(BaseModel):
     metadata: dict
 
 
-# TODO: this shouldn't be here, but rather a user-defined class inside the experiment
-class ManifestSampleShape(Enum):
-    SQUARE = "s"
-    TRIANGLE = "t"
-    CIRCLE = "c"
-
-
-class ShapedManifestSample(ManifestSample):
-    shape: ManifestSampleShape
-
-
 T = TypeVar("T", bound=ManifestSample)
 
 
@@ -33,8 +22,7 @@ class DatasetManifest(BaseModel, Generic[T]):
 
     name: str
     creation_time: datetime.datetime
-    train_samples: list[T]
-    test_samples: list[T]
+    samples: dict[str, list[T]]
 
     @staticmethod
     def get_sample_filename(id: Decimal) -> str:

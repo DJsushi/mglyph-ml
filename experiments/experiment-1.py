@@ -1,3 +1,4 @@
+from enum import Enum
 import random
 
 import mglyph as mg
@@ -7,17 +8,18 @@ from clearml import Task
 from torch import nn
 from torch.utils.data import DataLoader, Dataset, Subset
 
+from mglyph_ml.dataset.export import create_dataset
+from mglyph_ml.dataset.manifest import ManifestSample
 import mglyph_ml.lib as lib
 from mglyph_ml.dataset.glyph_dataset import GlyphDataset
-from mglyph_ml.dataset.glyph_importer import GlyphImporter
 from mglyph_ml.nn.glyph_regressor_gen2 import GlyphRegressor
 from mglyph_ml.nn.training import train_model
 from mglyph_ml.visualization import visualize_samples
 
-task: Task = Task.init(
-    project_name="mglyph-ml", task_name="Experiment 1 - all shapes - smaller augment", output_uri=True
-)
-logger = task.get_logger()
+# task: Task = Task.init(
+#     project_name="mglyph-ml", task_name="Experiment 1 - all shapes - smaller augment", output_uri=True
+# )
+# logger = task.get_logger()
 
 # HYPERPARAMETERS
 params = {
@@ -29,7 +31,7 @@ params = {
     "max_augment_rotation_degrees": 5,
     "max_augment_translation_percent": 0.05,
 }
-task.connect(params)
+# task.connect(params)
 
 np_gen = np.random.default_rng(params["seed"])
 random.seed(params["seed"])
@@ -41,41 +43,9 @@ def square(x: float, canvas: mg.Canvas):
     canvas.rect(canvas.top_left, canvas.bottom_right, color="purple")
 
 
-lib.export_glyph(
-    square,
-    name="train-square",
-    glyph_set="experiment-1",
-    xvalues=list(np_gen.uniform(low=0.0, high=params["start_x"], size=400))
-    + list(np_gen.uniform(low=params["end_x"], high=100.0, size=400)),
-)
-lib.export_glyph(
-    square,
-    name="test-square",
-    glyph_set="experiment-1",
-    xvalues=list(np_gen.uniform(low=params["start_x"], high=params["end_x"], size=200)),
-)
-
-
 def triangle(x: float, canvas: mg.Canvas):
     canvas.tr.scale(mg.lerp(x, 0.05, 0.95))
-    canvas.polygon(
-        [canvas.bottom_left, canvas.bottom_right, canvas.top_center], color="cyan"
-    )
-
-
-lib.export_glyph(
-    triangle,
-    name="train-triangle",
-    glyph_set="experiment-1",
-    xvalues=list(np_gen.uniform(low=0.0, high=params["start_x"], size=400))
-    + list(np_gen.uniform(low=params["end_x"], high=100.0, size=400)),
-)
-lib.export_glyph(
-    triangle,
-    name="test-triangle",
-    glyph_set="experiment-1",
-    xvalues=list(np_gen.uniform(low=params["start_x"], high=params["end_x"], size=200)),
-)
+    canvas.polygon([canvas.bottom_left, canvas.bottom_right, canvas.top_center], color="cyan")
 
 
 def circle(x: float, canvas: mg.Canvas):
@@ -83,52 +53,50 @@ def circle(x: float, canvas: mg.Canvas):
     canvas.circle(canvas.center, canvas.xsize / 2, color="yellow")
 
 
-lib.export_glyph(
-    circle,
-    name="train-circle",
-    glyph_set="experiment-1",
-    xvalues=list(np_gen.uniform(low=0.0, high=params["start_x"], size=400))
-    + list(np_gen.uniform(low=params["end_x"], high=100.0, size=400)),
-)
-lib.export_glyph(
-    circle,
-    name="test-circle",
-    glyph_set="experiment-1",
-    xvalues=list(np_gen.uniform(low=params["start_x"], high=params["end_x"], size=200)),
-)
+class ManifestSampleShape(Enum):
+    SQUARE = "s"
+    TRIANGLE = "t"
+    CIRCLE = "c"
+
+
+class ShapedManifestSample(ManifestSample):
+    shape: ManifestSampleShape
+
+
+ds = create_dataset(name="experiment-1")
+for x in np.concatenate([np.linspace(0.0, params["start_x"], 400), np.linspace(params["end_x"], 100.0, 400)]):
+    ds.add_sample(square, x, split="train", metadata={"shape": ManifestSampleShape.SQUARE})
+    ds.add_sample(triangle, x, split="train", metadata={"shape": ManifestSampleShape.TRIANGLE})
+    ds.add_sample(circle, x, split="train", metadata={"shape": ManifestSampleShape.CIRCLE})
+for x in np.linspace(params["start_x"], params["end_x"], 200):
+    ds.add_sample(square, x, split="test", metadata={"shape": ManifestSampleShape.SQUARE})
+    ds.add_sample(triangle, x, split="test", metadata={"shape": ManifestSampleShape.TRIANGLE})
+    ds.add_sample(circle, x, split="test", metadata={"shape": ManifestSampleShape.CIRCLE})
+ds.export(path="data/experiment-1.dataset")
+
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(device)
 
 
-glyphs_train = ["train-square.mglyph", "train-triangle.mglyph", "train-circle.mglyph"]
-importers_train = [
-    GlyphImporter(f"data/glyphs-experiment-1/{glyph}") for glyph in glyphs_train
-]
 dataset_train: Dataset = GlyphDataset(
-    *importers_train,
+    path="data/experiment-1.dataset",
+    split="train",
     augmentation_seed=params["seed"],
     max_augment_rotation_degrees=params["max_augment_rotation_degrees"],
     max_augment_translation_percent=params["max_augment_translation_percent"],
 )
-
-glyphs_test = ["test-square.mglyph", "test-triangle.mglyph", "test-circle.mglyph"]
-importers_test = [
-    GlyphImporter(f"data/glyphs-experiment-1/{glyph}") for glyph in glyphs_test
-]
-dataset_test: Dataset = GlyphDataset(
-    *importers_test, augment=False
-)  # Changed from importers_train to importers_test
+dataset_test: Dataset = GlyphDataset(path="data/experiment-1.dataset", split="test", augment=False)
 
 
 fig1 = visualize_samples(plot_title="Training samples", dataset=dataset_train)
-logger.report_matplotlib_figure(
-    title="Training samples", series="Beginning", figure=fig1, report_image=True
-)
+# logger.report_matplotlib_figure(
+#     title="Training samples", series="Beginning", figure=fig1, report_image=True
+# )
 fig2 = visualize_samples(plot_title="Test samples", dataset=dataset_test)
-logger.report_matplotlib_figure(
-    title="Test samples", series="Beginning", figure=fig2, report_image=True
-)
+# logger.report_matplotlib_figure(
+#     title="Test samples", series="Beginning", figure=fig2, report_image=True
+# )
 
 if params["quick"]:
     indices_debug = list(range(0, len(dataset_train), 16))
@@ -154,7 +122,7 @@ losses, errors, test_losses, test_errors = train_model(
     optimizer=optimizer,
     num_epochs=params["max_iterations"],
     early_stopping_threshold=0.3,
-    logger=logger,
+    # logger=logger,
 )
 
 print(losses)

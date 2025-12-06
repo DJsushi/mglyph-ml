@@ -1,9 +1,12 @@
 from copy import deepcopy
 from functools import cached_property
 import math
+from pathlib import Path
 import random
 from dataclasses import dataclass
 from decimal import Decimal
+from io import BytesIO
+import zipfile
 
 import albumentations as A
 import cv2
@@ -11,8 +14,9 @@ import numpy as np
 import torch
 from torch import Tensor
 from torch.utils.data import Dataset
+from PIL import Image
 
-from mglyph_ml.dataset.glyph_importer import GlyphImporter
+from mglyph_ml.dataset.manifest import DatasetManifest, ManifestSample
 
 type GlyphSample = tuple[Tensor, Tensor]
 
@@ -27,31 +31,44 @@ class GlyphDataset(Dataset):
 
     def __init__(
         self,
-        *glyph_importers: GlyphImporter,
+        path: str | Path,
+        split: str,
         augment: bool = True,
         normalize: bool = True,
         augmentation_seed: int | None = None,
         max_augment_rotation_degrees: float = 5.0,
         max_augment_translation_percent: float = 0.05,
     ):
-        self.__glyph_importers = glyph_importers
+        self.__path = Path(path) if isinstance(path, str) else path
+        self.__split = split
         self.__max_augment_rotation_degrees = max_augment_rotation_degrees
         self.__max_augment_translation_percent = max_augment_translation_percent
         self.__augmentation_seed = augmentation_seed
-        self.__set_up_augmentation(augment, normalize)
-        # calculate the number of samples just once and cache it
-        self.__len = sum([importer.count for importer in self.__glyph_importers])
         self.__normalize = normalize
+        
+        # Load the dataset archive and manifest
+        self.__archive = zipfile.ZipFile(self.__path, "r")
+        manifest_data = self.__archive.read("manifest.json")
+        self.__manifest = DatasetManifest.model_validate_json(manifest_data)
+        
+        # Select the appropriate samples based on split
+        if split not in self.__manifest.samples:
+            available_splits = list(self.__manifest.samples.keys())
+            raise ValueError(f"Invalid split: '{split}'. Available splits: {available_splits}")
+        
+        self.__samples = self.__manifest.samples[split]
+        
+        self.__set_up_augmentation(augment, normalize)
 
     def __len__(self) -> int:
-        return self.__len
+        return len(self.__samples)
 
     def __getitem__(self, index: int) -> tuple:
-        importer, start_index = self.__get_glyph_importer_based_on_index(index)
-        index -= start_index
-        label = importer.get_glyph_xvalue_by_index(index)
-        label /= Decimal(100.0)
-        image_pil = importer.get_glyph_at_index_as_pil_image(index)
+        sample = self.__samples[index]
+        label = Decimal(sample.x) / Decimal(100.0)
+        
+        # Load image from archive
+        image_pil = self.__get_image_as_pil(sample.filename)
         image_np = np.asarray(image_pil)  # outputs [H, W, C]
         image_augmented: np.ndarray = self.__transform(image=image_np)["image"]
         image_tensor = Tensor(image_augmented).permute(
@@ -63,20 +80,42 @@ class GlyphDataset(Dataset):
         #     image_tensor /= 255.0
         return image_tensor, torch.tensor(float(label), dtype=torch.float32)
 
-    def __get_glyph_importer_based_on_index(
-        self, index: int
-    ) -> tuple[GlyphImporter, int]:
-        cumulative_count = 0
-        for importer in self.__glyph_importers:
-            start_index = cumulative_count
-            cumulative_count += importer.count
-            if index < cumulative_count:
-                return importer, start_index
-        raise IndexError("Index out of range")
+    def __get_image_as_pil(self, filename: str) -> Image.Image:
+        """
+        Loads an image from the archive as a PIL Image.
+        
+        If the image has a transparent background, it will be pasted onto a completely white image and the result
+        will be returned.
+        """
+        image_bytes = self.__archive.read(filename)
+        image = Image.open(BytesIO(image_bytes))
+
+        if image.mode in ("RGBA", "LA"):
+            background = Image.new("RGBA", image.size, (255, 255, 255, 255))
+            background.paste(image, mask=image.split()[-1])
+            image = background.convert("RGB")
+        else:
+            image = image.convert("RGB")
+
+        return image
 
     def get_random_samples(self, n: int) -> list[GlyphSample]:
         indices = random.sample(range(len(self)), n)
         return [self[index] for index in indices]
+    
+    @cached_property
+    def glyph_size(self) -> tuple[int, int]:
+        """Get the size of glyphs in this dataset."""
+        if len(self.__samples) == 0:
+            raise ValueError("Dataset is empty")
+        first_sample = self.__samples[0]
+        pil_image = self.__get_image_as_pil(first_sample.filename)
+        return pil_image.width, pil_image.height
+    
+    def close(self) -> None:
+        """Close the dataset archive."""
+        if hasattr(self, '_GlyphDataset__archive'):
+            self.__archive.close()
 
     def __set_up_augmentation(self, augment: bool, normalize: bool) -> None:
         step1 = A.Affine(
