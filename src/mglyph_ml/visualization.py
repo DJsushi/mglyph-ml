@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 from torch import nn
 
-from mglyph_ml.data.glyph_dataset import GlyphDataset
+from mglyph_ml.dataset.glyph_dataset import GlyphDataset
 from mglyph_ml.dataset.glyph_importer import GlyphImporter
 
 

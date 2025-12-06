@@ -8,7 +8,7 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset, Subset
 
 import mglyph_ml.lib as lib
-from mglyph_ml.data.glyph_dataset import GlyphDataset
+from mglyph_ml.dataset.glyph_dataset import GlyphDataset
 from mglyph_ml.dataset.glyph_importer import GlyphImporter
 from mglyph_ml.nn.glyph_regressor_gen2 import GlyphRegressor
 from mglyph_ml.nn.training import train_model
