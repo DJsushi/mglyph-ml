@@ -10,7 +10,7 @@ from typing import TypeVar, Generic
 
 class ManifestSample(BaseModel):
     x: Decimal
-    id: int
+    filename: str
 
 
 # TODO: this shouldn't be here, but rather a user-defined class inside the experiment
@@ -27,7 +27,7 @@ class ShapedManifestSample(ManifestSample):
 T = TypeVar("T", bound=ManifestSample)
 
 
-class Manifest(BaseModel, Generic[T]):
+class DatasetManifest(BaseModel, Generic[T]):
     model_config = ConfigDict(strict=True)
 
     name: str
@@ -35,5 +35,6 @@ class Manifest(BaseModel, Generic[T]):
     train_samples: list[T]
     test_samples: list[T]
 
-    def get_sample_filename(self, id: Decimal) -> str:
+    @staticmethod
+    def get_sample_filename(id: Decimal) -> str:
         return f"{id}.png"
