@@ -5,7 +5,7 @@ from io import BytesIO
 
 from PIL import Image
 
-from mglyph_ml.manifest_parsing import Manifest, ManifestImage
+from mglyph_ml.dataset.manifest_parsing import Manifest, ManifestSample
 
 
 class GlyphImporter:
@@ -15,7 +15,7 @@ class GlyphImporter:
         self.__manifest = Manifest.model_validate_json(manifest)
 
     def get_glyph_xvalue_by_index(self, index: int) -> Decimal:
-        image: ManifestImage = self.__manifest.images[index]
+        image: ManifestSample = self.__manifest.images[index]
         return Decimal(image.x)
 
     def __get_glyph_path(self, label: Decimal) -> str:
@@ -44,7 +44,7 @@ class GlyphImporter:
         return image
 
     def get_glyph_at_index_as_pil_image(self, index: int) -> Image.Image:
-        image: ManifestImage = self.__manifest.images[index]
+        image: ManifestSample = self.__manifest.images[index]
         return self.get_glyph_as_pil_image(Decimal(image.x))
 
     @cached_property

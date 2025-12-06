@@ -73,7 +73,6 @@ def train_model(
         optimizer: Optimizer for training
         num_epochs: Maximum number of epochs to train (default: 10)
         early_stopping_threshold: Stop training if test error drops below this value in x units (default: 0.3)
-        reset_test_transform: Whether to reset test dataset transform before evaluation (default: True)
 
     Returns:
         Tuple of (train_losses, train_errors, test_losses, test_errors) - all as lists

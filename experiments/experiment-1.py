@@ -23,9 +23,9 @@ logger = task.get_logger()
 params = {
     "start_x": 40.0,  # where the training dataset should end and test dataset should begin
     "end_x": 60.0,  # where the test dataset should end and training dataset should begin
-    "quick": False,  # whether to speedrun the training for testing purposes
+    "quick": True,  # whether to speedrun the training for testing purposes
     "seed": 69,
-    "max_iterations": 30,
+    "max_iterations": 10,
     "max_augment_rotation_degrees": 5,
     "max_augment_translation_percent": 0.05,
 }
@@ -145,7 +145,7 @@ criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 # Train the model with visualization
-train_model(
+losses, errors, test_losses, test_errors = train_model(
     model=model,
     data_loader_train=data_loader_train,
     data_loader_test=data_loader_test,
@@ -156,3 +156,8 @@ train_model(
     early_stopping_threshold=0.3,
     logger=logger,
 )
+
+print(losses)
+print(errors)
+print(test_losses)
+print(test_errors)

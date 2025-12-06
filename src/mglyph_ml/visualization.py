@@ -116,7 +116,6 @@ def visualize_samples(
         - Grid of test images with their labels
     """
     # Get random samples
-    dataset.reset_transform()
     sample_indices = random.sample(range(len(dataset)), num_samples)
 
     # Calculate grid dimensions
