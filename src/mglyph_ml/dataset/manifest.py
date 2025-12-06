@@ -11,6 +11,7 @@ from typing import TypeVar, Generic
 class ManifestSample(BaseModel):
     x: Decimal
     filename: str
+    metadata: dict
 
 
 # TODO: this shouldn't be here, but rather a user-defined class inside the experiment

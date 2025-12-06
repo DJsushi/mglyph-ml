@@ -2,6 +2,7 @@
 Logic for dataset creation and exporting.
 """
 
+import dataclasses
 import json
 import sys
 import zipfile
@@ -16,28 +17,34 @@ from mglyph_ml.dataset.manifest import DatasetManifest, ManifestSample
 
 # i envision the usage like this:
 # dataset = create_dataset(name='', creation_time='', ...) # returns a DatasetBuilder
-# dataset.add_training_data(square_drawer, )
-# dataset.add_testing_data()
+# dataset.add_training_sample(drawer, x, optional_metadata)
+# dataset.add_testing_sample(drawer, x, optional_metadata)
 # dataset.export(path='')
 
-Drawer = Callable[[float, Canvas], None]
+type Drawer = Callable[[float, Canvas], None]
+
+
+@dataclasses.dataclass
+class _Sample:
+    drawer: Drawer
+    x: Decimal
+    metadata: dict
 
 
 class _DatasetBuilder:
     def __init__(self, name: str, creation_time: datetime):
         self._name: str = name
         self._creation_time: datetime = creation_time
-        self._training_data: list[tuple[Drawer, list[Decimal]]] = []
-        self._testing_data: list[tuple[Drawer, list[Decimal]]] = []
+        self._training_samples: list[_Sample] = []
+        # self._testing_data: list[tuple[Drawer, list[Decimal]]] = []
         self._number_of_samples: int = 0
 
-    def add_training_data(self, drawer: Drawer, xvalues: list[Decimal]):
-        self._training_data.append((drawer, xvalues))
-        self._number_of_samples += len(xvalues)
+    def add_training_sample(self, drawer: Drawer, x: Decimal, metadata: dict = {}):
+        self._training_samples.append(_Sample(drawer, x, metadata))
 
-    def add_testing_data(self, drawer: Drawer, xvalues: list[Decimal]):
-        self._testing_data.append((drawer, xvalues))
-        self._number_of_samples += len(xvalues)
+    # def add_testing_data(self, drawer: Drawer, xvalues: list[Decimal]):
+    #     self._testing_data.append((drawer, xvalues))
+    #     self._number_of_samples += len(xvalues)
 
     def export(
         self,
@@ -47,28 +54,27 @@ class _DatasetBuilder:
         ),
     ) -> None:
         global_id = 0
-        order = len(str(self._number_of_samples - 1))
+        order = len(str(len(self._training_samples) - 1))
 
         train_samples = []
-        for drawer, xvalues in self._training_data:
-            for x in xvalues:
-                train_samples.append(
-                    ManifestSample(x=Decimal(x), filename=f"{global_id:0{order}d}.png")
-                )
-                global_id += 1
-        test_samples = []
-        for drawer, xvalues in self._testing_data:
-            for x in xvalues:
-                test_samples.append(
-                    ManifestSample(x=Decimal(x), filename=f"{global_id:0{order}d}.png")
-                )
-                global_id += 1
+        for sample in self._training_samples:
+            train_samples.append(
+                ManifestSample(x=sample.x, filename=f"{global_id:0{order}d}.png", metadata=sample.metadata)
+            )
+            global_id += 1
+        # test_samples = []
+        # for _, xvalues in self._testing_data:
+        #     for x in xvalues:
+        #         test_samples.append(
+        #             ManifestSample(x=x, filename=f"{global_id:0{order}d}.png")
+        #         )
+        #         global_id += 1
 
         manifest = DatasetManifest(
             name=self._name,
             creation_time=self._creation_time,
             train_samples=train_samples,
-            test_samples=test_samples,
+            test_samples=[],
         )
 
         zip_buffer = BytesIO()
