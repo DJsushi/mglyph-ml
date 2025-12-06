@@ -2,7 +2,7 @@ from decimal import Decimal
 
 import pytest
 
-from mglyph_ml.glyph_importer import GlyphImporter
+from mglyph_ml.dataset.glyph_importer import GlyphImporter
 
 
 @pytest.fixture

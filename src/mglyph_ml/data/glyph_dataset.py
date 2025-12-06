@@ -12,7 +12,7 @@ import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
-from mglyph_ml.glyph_importer import GlyphImporter
+from mglyph_ml.dataset.glyph_importer import GlyphImporter
 
 type GlyphSample = tuple[Tensor, Tensor]
 

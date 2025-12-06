@@ -8,7 +8,7 @@ from matplotlib.figure import Figure
 from torch import nn
 
 from mglyph_ml.data.glyph_dataset import GlyphDataset
-from mglyph_ml.glyph_importer import GlyphImporter
+from mglyph_ml.dataset.glyph_importer import GlyphImporter
 
 
 def visualize_test_predictions(

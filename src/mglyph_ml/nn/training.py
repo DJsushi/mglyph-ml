@@ -7,7 +7,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from mglyph_ml.data.glyph_dataset import GlyphDataset
-from mglyph_ml.glyph_importer import GlyphImporter
+from mglyph_ml.dataset.glyph_importer import GlyphImporter
 from mglyph_ml.visualization import visualize_samples
 
 
