@@ -9,7 +9,7 @@ import zipfile
 from datetime import datetime
 from decimal import Decimal
 from io import BytesIO
-from typing import Callable
+from typing import Callable, Optional
 
 from mglyph import Canvas, CanvasParameters, render
 
@@ -51,7 +51,7 @@ class _DatasetBuilder:
         canvas_parameters: CanvasParameters = CanvasParameters(
             canvas_round_corner=False
         ),
-    ) -> None:
+    ) -> Optional[BytesIO]:
         global_id = 0
         order = len(str(len(self._training_samples) - 1))
 
