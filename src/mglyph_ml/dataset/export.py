@@ -36,15 +36,14 @@ class _DatasetBuilder:
         self._name: str = name
         self._creation_time: datetime = creation_time
         self._training_samples: list[_Sample] = []
-        # self._testing_data: list[tuple[Drawer, list[Decimal]]] = []
+        self._testing_samples: list[_Sample] = []
         self._number_of_samples: int = 0
 
     def add_training_sample(self, drawer: Drawer, x: Decimal, metadata: dict = {}):
         self._training_samples.append(_Sample(drawer, x, metadata))
 
-    # def add_testing_data(self, drawer: Drawer, xvalues: list[Decimal]):
-    #     self._testing_data.append((drawer, xvalues))
-    #     self._number_of_samples += len(xvalues)
+    def add_testing_sample(self, drawer: Drawer, x: Decimal, metadata: dict = {}):
+        self._testing_samples.append(_Sample(drawer, x, metadata))
 
     def export(
         self,
@@ -59,22 +58,29 @@ class _DatasetBuilder:
         manifest_train_samples = []
         for sample in self._training_samples:
             manifest_train_samples.append(
-                ManifestSample(x=sample.x, filename=f"{global_id:0{order}d}.png", metadata=sample.metadata)
+                ManifestSample(
+                    x=sample.x,
+                    filename=f"{global_id:0{order}d}.png",
+                    metadata=sample.metadata,
+                )
             )
             global_id += 1
-        # test_samples = []
-        # for _, xvalues in self._testing_data:
-        #     for x in xvalues:
-        #         test_samples.append(
-        #             ManifestSample(x=x, filename=f"{global_id:0{order}d}.png")
-        #         )
-        #         global_id += 1
+        manifest_test_samples = []
+        for sample in self._testing_samples:
+            manifest_test_samples.append(
+                ManifestSample(
+                    x=sample.x,
+                    filename=f"{global_id:0{order}d}.png",
+                    metadata=sample.metadata,
+                )
+            )
+            global_id += 1
 
         manifest = DatasetManifest(
             name=self._name,
             creation_time=self._creation_time,
             train_samples=manifest_train_samples,
-            test_samples=[],
+            test_samples=manifest_test_samples,
         )
 
         zip_buffer = BytesIO()
@@ -82,10 +88,13 @@ class _DatasetBuilder:
         with zipfile.ZipFile(zip_buffer, "w") as zf:
             zf.writestr("manifest.json", manifest.model_dump_json(indent=2))
 
-            for sample, manifest_sample in zip(self._training_samples, manifest_train_samples): # + self._testing_samples
-                image = render(sample.drawer, (512, 512), float(sample.x), canvas_parameters, compress="pil") # type: ignore
+            for sample, manifest_sample in zip(
+                self._training_samples + self._testing_samples,
+                manifest_train_samples + manifest_test_samples,
+            ):
+                image = render(sample.drawer, (512, 512), float(sample.x), canvas_parameters, compress="pil")  # type: ignore
                 data = BytesIO()
-                image["pil"].save(data, format="PNG", compress_level=5) # type: ignore
+                image["pil"].save(data, format="PNG", compress_level=5)  # type: ignore
                 data.seek(0)
                 zf.writestr(manifest_sample.filename, data.read())
 
