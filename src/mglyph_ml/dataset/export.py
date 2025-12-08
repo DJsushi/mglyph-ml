@@ -4,6 +4,7 @@ Logic for dataset creation and exporting.
 
 import dataclasses
 import json
+from pathlib import Path
 import sys
 import zipfile
 from datetime import datetime
@@ -45,7 +46,7 @@ class _DatasetBuilder:
 
     def export(
         self,
-        path: str,
+        path: Path,
         canvas_parameters: CanvasParameters = CanvasParameters(
             canvas_round_corner=False
         ),
