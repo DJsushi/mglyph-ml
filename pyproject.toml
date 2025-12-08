@@ -22,7 +22,7 @@ dependencies = [
 package = true
 
 [tool.black]
-line-length = 120
+line-length = 110
 
 [build-system]
 requires = ["uv_build>=0.9.8,<0.10.0"]

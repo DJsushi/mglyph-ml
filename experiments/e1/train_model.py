@@ -1,0 +1,76 @@
+from pathlib import Path
+
+from clearml import TaskTypes
+from clearml.automation.controller import PipelineDecorator
+
+
+@PipelineDecorator.component(name="Training loop", cache=True, task_type=TaskTypes.training.value)
+def train_model(
+    dataset_path: Path,
+    seed: int,
+    max_augment_rotation_degrees: float,
+    max_augment_translation_percent: float,
+    quick: bool,
+    max_iterations: int,
+):
+    import random
+
+    import numpy as np
+    import torch
+    from clearml import Task
+    from torch import nn
+    from torch.utils.data import DataLoader, Dataset, Subset
+
+    from mglyph_ml.dataset.glyph_dataset import GlyphDataset
+    from mglyph_ml.nn.glyph_regressor_gen2 import GlyphRegressor
+    from mglyph_ml.nn.training import train_model
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Device used for training: {device}")
+
+    # Ensure reproducible weight initialization and dataloader shuffling
+    random.seed(seed)
+    np.random.seed(seed)
+    generator = torch.manual_seed(seed)
+
+    logger = Task.current_task().logger
+
+    dataset_train: Dataset = GlyphDataset(
+        path="data/experiment-1.dataset",
+        split="train",
+        augmentation_seed=seed,
+        max_augment_rotation_degrees=max_augment_rotation_degrees,
+        max_augment_translation_percent=max_augment_translation_percent,
+    )
+    dataset_test: Dataset = GlyphDataset(path="data/experiment-1.dataset", split="test", augment=False)
+
+    if quick:
+        indices_debug = list(range(0, len(dataset_train), 16))
+        dataset_train = Subset(dataset_train, indices_debug)
+
+    data_loader_train = DataLoader(dataset_train, batch_size=128, shuffle=True, generator=generator)
+    data_loader_test = DataLoader(dataset_test, batch_size=128)
+
+    model = GlyphRegressor()
+    model = model.to(device)
+
+    criterion = nn.MSELoss()
+    # optimizer = torch.optim.SGD(model.parameters(), lr=0.0003, momentum=0.00001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+    # Train the model with visualization
+    losses, errors, test_losses, test_errors = train_model(
+        model=model,
+        data_loader_train=data_loader_train,
+        data_loader_test=data_loader_test,
+        device=device,
+        criterion=criterion,
+        optimizer=optimizer,
+        num_epochs=max_iterations,
+        early_stopping_threshold=0.3,
+        logger=logger,
+    )
+
+    torch.save(model.state_dict(), "models/experiment-1.pt")
+
+    return model

@@ -10,6 +10,7 @@ def prepare_data(dataset_name: str, start_x: float, end_x: float, seed: int):
     from pathlib import Path
 
     import mglyph as mg
+    from clearml import Dataset
     import numpy as np
     from util import ManifestSampleShape
 
@@ -44,5 +45,19 @@ def prepare_data(dataset_name: str, start_x: float, end_x: float, seed: int):
 
     path = Path(f"data/{dataset_name}.dataset")
     ds.export(path)
+
+    # TODO: this might come in handy later in case I decide to add proper dataset functionality
+    # if upload_to_clearml:
+    #     project_name = dataset_project or "mglyph-ml"
+    #     parent_list = [parent_dataset_id] if parent_dataset_id else None
+    #     clearml_ds = Dataset.create(
+    #         dataset_name=dataset_name,
+    #         dataset_project=project_name,
+    #         parent_datasets=parent_list,
+    #     )
+    #     clearml_ds.add_files(path)
+    #     clearml_ds.upload()
+    #     clearml_ds.finalize()
+    #     return clearml_ds.id
 
     return path
