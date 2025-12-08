@@ -16,22 +16,20 @@ from mglyph_ml.nn.glyph_regressor_gen2 import GlyphRegressor
 from mglyph_ml.nn.training import train_model
 from mglyph_ml.visualization import visualize_samples
 
-# task: Task = Task.init(
-#     project_name="mglyph-ml", task_name="Experiment 1 - all shapes - smaller augment", output_uri=True
-# )
-# logger = task.get_logger()
+task: Task = Task.init(project_name="mglyph-ml", task_name="Experiment 1 - working", output_uri=True)
+logger = task.get_logger()
 
 # HYPERPARAMETERS
 params = {
     "start_x": 40.0,  # where the training dataset should end and test dataset should begin
     "end_x": 60.0,  # where the test dataset should end and training dataset should begin
-    "quick": True,  # whether to speedrun the training for testing purposes
-    "seed": 69,
-    "max_iterations": 10,
+    "quick": False,  # whether to speedrun the training for testing purposes
+    "seed": 420,
+    "max_iterations": 50,
     "max_augment_rotation_degrees": 5,
     "max_augment_translation_percent": 0.05,
 }
-# task.connect(params)
+task.connect(params)
 
 np_gen = np.random.default_rng(params["seed"])
 random.seed(params["seed"])
@@ -88,21 +86,15 @@ dataset_train: Dataset = GlyphDataset(
 )
 dataset_test: Dataset = GlyphDataset(path="data/experiment-1.dataset", split="test", augment=False)
 
-
-fig1 = visualize_samples(plot_title="Training samples", dataset=dataset_train)
-# logger.report_matplotlib_figure(
-#     title="Training samples", series="Beginning", figure=fig1, report_image=True
-# )
-fig2 = visualize_samples(plot_title="Test samples", dataset=dataset_test)
-# logger.report_matplotlib_figure(
-#     title="Test samples", series="Beginning", figure=fig2, report_image=True
-# )
-
 if params["quick"]:
     indices_debug = list(range(0, len(dataset_train), 16))
     dataset_train = Subset(dataset_train, indices_debug)
 
-data_loader_train = DataLoader(dataset_train, batch_size=128)
+# Create a seeded generator for reproducible shuffling
+train_generator = torch.Generator()
+train_generator.manual_seed(params["seed"])
+
+data_loader_train = DataLoader(dataset_train, batch_size=128, shuffle=True, generator=train_generator)
 data_loader_test = DataLoader(dataset_test, batch_size=128)
 
 model = GlyphRegressor()
@@ -122,10 +114,5 @@ losses, errors, test_losses, test_errors = train_model(
     optimizer=optimizer,
     num_epochs=params["max_iterations"],
     early_stopping_threshold=0.3,
-    # logger=logger,
+    logger=logger,
 )
-
-print(losses)
-print(errors)
-print(test_losses)
-print(test_errors)

@@ -40,11 +40,9 @@ class GlyphDataset(Dataset):
         max_augment_translation_percent: float = 0.05,
     ):
         self.__path = Path(path) if isinstance(path, str) else path
-        self.__split = split
         self.__max_augment_rotation_degrees = max_augment_rotation_degrees
         self.__max_augment_translation_percent = max_augment_translation_percent
         self.__augmentation_seed = augmentation_seed
-        self.__normalize = normalize
         
         # Load the dataset archive and manifest
         self.__archive = zipfile.ZipFile(self.__path, "r")

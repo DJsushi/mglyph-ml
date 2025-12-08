@@ -84,25 +84,29 @@ def train_model(
 
     # Train for specified number of epochs
     for epoch in range(1, num_epochs + 1):
-        loss, error = train_one_epoch(
-            model, data_loader_train, device, criterion, optimizer
-        )
-        
+        if logger is not None:
+            fig1 = visualize_samples(plot_title="Training samples", dataset=data_loader_train.dataset)  # type: ignore
+            logger.report_matplotlib_figure(
+                title="Training samples", series="idk", figure=fig1, report_image=True, iteration=epoch
+            )
+            fig2 = visualize_samples(plot_title="Test samples", dataset=data_loader_test.dataset)  # type: ignore
+            logger.report_matplotlib_figure(
+                title="Test samples", series="idk", figure=fig2, report_image=True, iteration=epoch
+            )
+
+        loss, error = train_one_epoch(model, data_loader_train, device, criterion, optimizer)
+
         error *= 100.0  # Convert normalized error (0-1) to actual x units (0-100)
         losses.append(loss)
         errors.append(error)
 
-        test_loss, test_error = evaluate_glyph_regressor(
-            model, data_loader_test, device, criterion
-        )
+        test_loss, test_error = evaluate_glyph_regressor(model, data_loader_test, device, criterion)
         test_error *= 100.0  # Convert normalized error (0-1) to actual x units (0-100)
         test_losses.append(test_loss)
         test_errors.append(test_error)
 
         if logger is not None:
-            logger.report_scalar(
-                title="Loss", series="Train", value=loss, iteration=epoch
-            )
+            logger.report_scalar(title="Loss", series="Train", value=loss, iteration=epoch)
             logger.report_scalar(
                 title="Loss",
                 series="Test",
@@ -121,28 +125,16 @@ def train_model(
                 value=test_error,
                 iteration=epoch,
             )
-            fig1 = visualize_samples(plot_title="Training samples", dataset=data_loader_train.dataset) # type: ignore
-            logger.report_matplotlib_figure(
-                title="Training samples", series="Beginning", figure=fig1, report_image=True
-            )
-            fig2 = visualize_samples(plot_title="Test samples", dataset=data_loader_test.dataset) # type: ignore
-            logger.report_matplotlib_figure(
-                title="Test samples", series="Beginning", figure=fig2, report_image=True
-            )
 
         # Early stopping: stop if error is good enough
         if test_error < early_stopping_threshold:
-            print(
-                f"Early stopping at epoch {epoch+1}: test error {test_error:.4f} x units is below threshold"
-            )
+            print(f"Early stopping at epoch {epoch+1}: test error {test_error:.4f} x units is below threshold")
             break
 
     return losses, errors, test_losses, test_errors
 
 
-def evaluate_glyph_regressor(
-    model: nn.Module, data_loader: DataLoader, device: str, criterion
-) -> tuple[float, float]:
+def evaluate_glyph_regressor(model: nn.Module, data_loader: DataLoader, device: str, criterion) -> tuple[float, float]:
     """
     Takes a glyph regressor, temporarily disables gradient calculation, and calculates the average
     loss on the given dataset (DataLoader). Processes in batches on GPU for efficiency.
