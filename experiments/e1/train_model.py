@@ -4,7 +4,7 @@ from clearml import TaskTypes
 from clearml.automation.controller import PipelineDecorator
 
 
-@PipelineDecorator.component(name="Training loop", cache=True, task_type=TaskTypes.training.value)
+@PipelineDecorator.component(name="Training loop", cache=False, task_type=TaskTypes.training.value)
 def train_model(
     dataset_path: Path,
     seed: int,
@@ -36,13 +36,13 @@ def train_model(
     logger = Task.current_task().logger
 
     dataset_train: Dataset = GlyphDataset(
-        path="data/experiment-1.dataset",
+        path=dataset_path,
         split="train",
         augmentation_seed=seed,
         max_augment_rotation_degrees=max_augment_rotation_degrees,
         max_augment_translation_percent=max_augment_translation_percent,
     )
-    dataset_test: Dataset = GlyphDataset(path="data/experiment-1.dataset", split="test", augment=False)
+    dataset_test: Dataset = GlyphDataset(path=dataset_path, split="test", augment=False)
 
     if quick:
         indices_debug = list(range(0, len(dataset_train), 16))

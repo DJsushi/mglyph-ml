@@ -4,7 +4,7 @@ from prepare_data import prepare_data
 from train_model import train_model
 
 
-@PipelineDecorator.pipeline(name="Pipeline 1", project="Project 1", version="0.0.1")
+@PipelineDecorator.pipeline(name="pipeline-1", project="mglyph-ml", version="0.0.1")
 def main():
     task: Task = Task.current_task()
 
