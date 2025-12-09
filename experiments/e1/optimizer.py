@@ -1,36 +1,37 @@
 from clearml import Task, TaskTypes
-from clearml.automation import DiscreteParameterRange, GridSearch, HyperParameterOptimizer
+from clearml.automation.controller import PipelineDecorator
+from pipeline import main
+
 
 task: Task = Task.init(
     project_name="mglyph-ml",
     task_name="Hyper-Parameter Exploration",
-    task_type=TaskTypes.optimizer,
+    task_type=TaskTypes.testing,
     # reuse_last_task_id=False,
 )
 
-# The hyperparameter optimizer is a task that has its own hyper-parameters
-args = {
-    # The ID of the task that we want to optimize.
-    # The optimizer will run this specified task many times with different hyper-parameters and
-    # report back the results
-    "template_task_id": None
-}
-args = task.connect(args)
+# Define the parameter sets you want to explore
+parameter_sets = [
+    {
+        "start_x": 10.0,
+        "end_x": 90.0,
+    },
+    {
+        "start_x": 30.0,
+        "end_x": 70.0,
+    },
+    {
+        "start_x": 45.0,
+        "end_x": 55.0,
+    },
+]
 
-if not args["template_task_id"]:
-    raise Exception("No task id provided! Exiting...")
+# Run the pipeline with each parameter set
+for i, params in enumerate(parameter_sets):
+    print(f"\nRunning pipeline with parameter set {i + 1}/{len(parameter_sets)}")
+    print(f"Parameters: {params}")
 
-optimizer = HyperParameterOptimizer(
-    base_task_id=args["template_task_id"],
-    hyper_parameters=[
-        DiscreteParameterRange("start_x", [20.0, 30.0]),
-        DiscreteParameterRange("end_x", [70.0, 80.0]),
-    ],
-    objective_metric_title="error",
-    objective_metric_series="train",
-    optimizer_class=GridSearch,
-    max_number_of_concurrent_tasks=1,
-)
+    # Execute the pipeline with the current parameters
+    main(start_x=params["start_x"], end_x=params["end_x"])
 
-optimizer.start_locally()
-optimizer.wait()
+print("\nHyper-parameter exploration complete!")

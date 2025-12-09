@@ -1,16 +1,22 @@
-from clearml import Task
 from clearml.automation.controller import PipelineDecorator
-from prepare_data import prepare_data
-from train_model import train_model
 
 
-@PipelineDecorator.pipeline(name="pipeline-1", project="mglyph-ml", version="0.0.1")
-def main():
+@PipelineDecorator.pipeline(
+    name="pipeline-1",
+    project="mglyph-ml",
+    version="0.0.1",
+    pipeline_execution_queue="default"
+)
+def main(start_x=40.0, end_x=60.0):
+    from clearml import Task
+    from prepare_data import prepare_data
+    from train_model import train_model
+
     task: Task = Task.current_task()
 
     params = {
-        "start_x": 40.0,  # where the training dataset should end and test dataset should begin
-        "end_x": 60.0,  # where the test dataset should end and training dataset should begin
+        "start_x": start_x,  # where the training dataset should end and test dataset should begin
+        "end_x": end_x,  # where the test dataset should end and training dataset should begin
         "quick": True,  # whether to speedrun the training for testing purposes
         "seed": 420,
         "max_iterations": 5,

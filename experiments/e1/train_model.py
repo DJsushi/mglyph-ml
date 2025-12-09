@@ -4,7 +4,9 @@ from clearml import TaskTypes
 from clearml.automation.controller import PipelineDecorator
 
 
-@PipelineDecorator.component(name="Training loop", cache=False, task_type=TaskTypes.training.value)
+@PipelineDecorator.component(
+    name="Training loop", cache=False, task_type=TaskTypes.training.value, execution_queue="default"
+)
 def train_model(
     dataset_path: Path,
     seed: int,
