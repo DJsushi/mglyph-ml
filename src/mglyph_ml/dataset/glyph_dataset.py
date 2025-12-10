@@ -1,6 +1,7 @@
 from copy import deepcopy
 from functools import cached_property
 import math
+import os
 from pathlib import Path
 import random
 from dataclasses import dataclass
@@ -27,6 +28,8 @@ class GlyphDataset(Dataset):
 
     It has been designed in a way to provide a variety of datasets so that it's very easy for the user
     of the dataset to only include glyphs that they really want in the dataset.
+    
+    This dataset is multiprocessing-safe: each worker process will open its own ZIP file handle.
     """
 
     def __init__(
@@ -44,10 +47,14 @@ class GlyphDataset(Dataset):
         self.__max_augment_translation_percent = max_augment_translation_percent
         self.__augmentation_seed = augmentation_seed
         
-        # Load the dataset archive and manifest
-        self.__archive = zipfile.ZipFile(self.__path, "r")
-        manifest_data = self.__archive.read("manifest.json")
-        self.__manifest = DatasetManifest.model_validate_json(manifest_data)
+        # Don't open archive yet - will be opened lazily per worker process
+        self.__archive = None
+        self.__worker_id = None
+        
+        # Load manifest from a temporary archive just to get the metadata
+        with zipfile.ZipFile(self.__path, "r") as temp_archive:
+            manifest_data = temp_archive.read("manifest.json")
+            self.__manifest = DatasetManifest.model_validate_json(manifest_data)
         
         # Select the appropriate samples based on split
         if split not in self.__manifest.samples:
@@ -60,6 +67,24 @@ class GlyphDataset(Dataset):
 
     def __len__(self) -> int:
         return len(self.__samples)
+    
+    def _get_archive(self):
+        """
+        Get or create the ZIP archive handle for the current worker.
+        Each worker process needs its own handle for thread-safety.
+        """
+        # Check if we're in a new worker process
+        current_worker = torch.utils.data.get_worker_info()
+        worker_id = current_worker.id if current_worker is not None else None
+        
+        # If worker changed or archive not yet opened, (re)open it
+        if self.__archive is None or self.__worker_id != worker_id:
+            if self.__archive is not None:
+                self.__archive.close()
+            self.__archive = zipfile.ZipFile(self.__path, "r")
+            self.__worker_id = worker_id
+        
+        return self.__archive
 
     def __getitem__(self, index: int) -> tuple:
         sample = self.__samples[index]
@@ -85,7 +110,8 @@ class GlyphDataset(Dataset):
         If the image has a transparent background, it will be pasted onto a completely white image and the result
         will be returned.
         """
-        image_bytes = self.__archive.read(filename)
+        archive = self._get_archive()
+        image_bytes = archive.read(filename)
         image = Image.open(BytesIO(image_bytes))
 
         if image.mode in ("RGBA", "LA"):
@@ -112,8 +138,9 @@ class GlyphDataset(Dataset):
     
     def close(self) -> None:
         """Close the dataset archive."""
-        if hasattr(self, '_GlyphDataset__archive'):
+        if self.__archive is not None:
             self.__archive.close()
+            self.__archive = None
 
     def __set_up_augmentation(self, augment: bool, normalize: bool) -> None:
         step1 = A.Affine(

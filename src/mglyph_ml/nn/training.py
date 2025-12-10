@@ -25,8 +25,8 @@ def train_one_epoch(
 
     for index, data in enumerate(train_data_loader):
         inputs, labels = data
-        inputs = inputs.to(device)
-        labels = labels.to(device)
+        inputs = inputs.to(device, non_blocking=True)
+        labels = labels.to(device, non_blocking=True)
         labels = labels.view(-1, 1)
 
         optimizer.zero_grad()
@@ -127,7 +127,7 @@ def train_model(
             )
 
         # Early stopping: stop if error is good enough
-        if test_error < early_stopping_threshold:
+        if error < early_stopping_threshold:
             print(f"Early stopping at epoch {epoch+1}: test error {test_error:.4f} x units is below threshold")
             break
 
@@ -148,8 +148,8 @@ def evaluate_glyph_regressor(model: nn.Module, data_loader: DataLoader, device: 
 
     with torch.no_grad():
         for inputs, labels in data_loader:
-            inputs = inputs.to(device)
-            labels = labels.to(device)
+            inputs = inputs.to(device, non_blocking=True)
+            labels = labels.to(device, non_blocking=True)
             labels = labels.view(-1, 1)
 
             outputs = model(inputs)

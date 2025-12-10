@@ -1,12 +1,6 @@
 from pathlib import Path
 
-from clearml import TaskTypes
-from clearml.automation.controller import PipelineDecorator
 
-
-@PipelineDecorator.component(
-    name="Training loop", cache=False, task_type=TaskTypes.training.value, execution_queue="default"
-)
 def train_model(
     dataset_path: Path,
     seed: int,
@@ -14,6 +8,7 @@ def train_model(
     max_augment_translation_percent: float,
     quick: bool,
     max_iterations: int,
+    good_enough_x_error: float,
 ):
     import random
 
@@ -50,8 +45,24 @@ def train_model(
         indices_debug = list(range(0, len(dataset_train), 16))
         dataset_train = Subset(dataset_train, indices_debug)
 
-    data_loader_train = DataLoader(dataset_train, batch_size=128, shuffle=True, generator=generator)
-    data_loader_test = DataLoader(dataset_test, batch_size=128)
+    # Use multiple workers for faster data loading and pin_memory for faster GPU transfer
+    num_workers = 16  # Adjust based on your CPU cores
+    data_loader_train = DataLoader(
+        dataset_train, 
+        batch_size=128, 
+        shuffle=True, 
+        generator=generator,
+        num_workers=num_workers,
+        pin_memory=True,
+        persistent_workers=True  # Keep workers alive between epochs
+    )
+    data_loader_test = DataLoader(
+        dataset_test, 
+        batch_size=128,
+        num_workers=num_workers,
+        pin_memory=True,
+        persistent_workers=True
+    )
 
     model = GlyphRegressor()
     model = model.to(device)
@@ -69,7 +80,7 @@ def train_model(
         criterion=criterion,
         optimizer=optimizer,
         num_epochs=max_iterations,
-        early_stopping_threshold=0.3,
+        early_stopping_threshold=good_enough_x_error,
         logger=logger,
     )
 

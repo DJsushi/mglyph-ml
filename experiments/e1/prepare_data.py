@@ -1,12 +1,6 @@
 from decimal import Decimal
 
-from clearml import TaskTypes
-from clearml.automation import PipelineDecorator
 
-
-@PipelineDecorator.component(
-    name="Prepare Dataset", cache=True, task_type=TaskTypes.data_processing.value, execution_queue="default"
-)
 def prepare_data(dataset_name: str, start_x: float, end_x: float, seed: int):
     import random
     from pathlib import Path
