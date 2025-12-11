@@ -7,6 +7,8 @@ import subprocess
 import sys
 from dataclasses import dataclass
 
+import numpy as np
+
 
 @dataclass
 class ParameterSet:
@@ -15,17 +17,21 @@ class ParameterSet:
     max_iterations: float
 
 
-parameter_sets = [
-    ParameterSet(start_x=10.0, end_x=90.0, max_iterations=20),
-    ParameterSet(start_x=30.0, end_x=70.0, max_iterations=20),
-    ParameterSet(start_x=45.0, end_x=55.0, max_iterations=20),
-]
+parameter_sets: list[ParameterSet] = []
+
+# Generate parameter sets with varying gap sizes
+for gap_size in range(10, 100, 10):
+    for start in range(0, 101 - gap_size, 10):
+        end = start + gap_size
+        parameter_sets.append(ParameterSet(start_x=float(start), end_x=float(end), max_iterations=20))
+
+print(parameter_sets)
 
 # Run an experiment for each parameter set
 for i, params in enumerate(parameter_sets):
     print(f"\nRunning experiment with parameter set {i + 1}/{len(parameter_sets)}")
 
-    task_name = f"EXP 1: s={params.start_x}; e={params.end_x}"
+    task_name = f"EXP 2: s={params.start_x}; e={params.end_x}; i=20"
 
     cmd = [
         sys.executable,
@@ -38,7 +44,7 @@ for i, params in enumerate(parameter_sets):
         "--max-iterations",
         str(params.max_iterations),
         "--task-tag",
-        "experiment-1"
+        "experiment-2",
     ]
 
     result = subprocess.run(cmd, check=True)

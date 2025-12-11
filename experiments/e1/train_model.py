@@ -46,7 +46,7 @@ def train_model(
         dataset_train = Subset(dataset_train, indices_debug)
 
     # Use multiple workers for faster data loading and pin_memory for faster GPU transfer
-    num_workers = 16  # Adjust based on your CPU cores
+    num_workers = 32  # Adjust based on your CPU cores
     data_loader_train = DataLoader(
         dataset_train, 
         batch_size=128, 

@@ -127,7 +127,7 @@ def train_model(
             )
 
         # Early stopping: stop if error is good enough
-        if error < early_stopping_threshold:
+        if test_error < early_stopping_threshold:
             print(f"Early stopping at epoch {epoch+1}: test error {test_error:.4f} x units is below threshold")
             break
 

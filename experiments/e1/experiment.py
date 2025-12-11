@@ -72,7 +72,7 @@ if __name__ == "__main__":
         "--stop-x-error",
         type=float,
         default=1.0,
-        help="When train x error reaches this threshold, stop training (default: 2)",
+        help="When test x error reaches this threshold, stop training (default: 2)",
     )
     parser.add_argument("--task-tag", type=str)
 
