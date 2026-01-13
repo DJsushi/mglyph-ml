@@ -132,7 +132,7 @@ def visualize_samples(
 
         # Display the image
         axes[index].imshow(img)
-        axes[index].set_title(f"{label:.2f}")
+        axes[index].set_title(f"{label:.5f}")
 
     # Hide unused subplots
     for i in range(num_samples, len(axes)):

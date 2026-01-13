@@ -44,7 +44,7 @@ for i, params in enumerate(parameter_sets):
         "--max-iterations",
         str(params.max_iterations),
         "--task-tag",
-        "experiment-2",
+        "experiment-1.1.2",
     ]
 
     result = subprocess.run(cmd, check=True)

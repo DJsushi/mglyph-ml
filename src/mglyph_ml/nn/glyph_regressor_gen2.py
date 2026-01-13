@@ -4,6 +4,7 @@ from torch import nn
 class GlyphRegressor(nn.Module):
     def __init__(self):
         super().__init__()
+
         self.features = nn.Sequential(
             nn.Conv2d(3, 16, 3, padding=1),
             nn.ReLU(),
@@ -15,9 +16,7 @@ class GlyphRegressor(nn.Module):
             nn.ReLU(),
             nn.AdaptiveAvgPool2d((4, 4)),
         )
-        self.regressor = nn.Sequential(
-            nn.Flatten(), nn.Linear(64 * 4 * 4, 64), nn.ReLU(), nn.Linear(64, 1)
-        )
+        self.regressor = nn.Sequential(nn.Flatten(), nn.Linear(64 * 4 * 4, 64), nn.ReLU(), nn.Linear(64, 1))
 
     def forward(self, x):
         x = self.features(x)
