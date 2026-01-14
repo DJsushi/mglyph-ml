@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 
-def prepare_data(dataset_name: str, start_x: float, end_x: float, seed: int):
+def prepare_data(start_x: float, end_x: float, seed: int):
     import random
     from pathlib import Path
 
@@ -12,6 +12,17 @@ def prepare_data(dataset_name: str, start_x: float, end_x: float, seed: int):
 
     from mglyph_ml.dataset.export import create_dataset
 
+    # Generate dataset name from parameters
+    dataset_name = f"dataset_x{start_x:.1f}-{end_x:.1f}_seed{seed}"
+    path = Path(f"data/{dataset_name}.dataset")
+    
+    # Check if dataset already exists
+    if path.exists():
+        print(f"Dataset '{dataset_name}' already exists at {path}, skipping creation.")
+        return path
+    
+    print(f"Creating new dataset '{dataset_name}'...")
+    
     # This might come in handy later when creating a randomized dataset
     np_gen = np.random.default_rng(seed)
     random.seed(seed)
@@ -65,7 +76,6 @@ def prepare_data(dataset_name: str, start_x: float, end_x: float, seed: int):
         ds.add_sample(triangle, x, split="test", metadata={"shape": ManifestSampleShape.TRIANGLE})
         ds.add_sample(circle, x, split="test", metadata={"shape": ManifestSampleShape.CIRCLE})
 
-    path = Path(f"data/{dataset_name}.dataset")
     ds.export(path)
 
     # TODO: this might come in handy later in case I decide to add proper dataset functionality

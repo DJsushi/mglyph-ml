@@ -31,10 +31,9 @@ def run_experiment(config: ExperimentConfig) -> None:
     if config.start_x is None or config.end_x is None:
         raise ValueError("Parameters 'start_x' and 'end_x' must be provided.")
 
-    dataset_path = prepare_data(
-        dataset_name="Dataset 1", start_x=config.start_x, end_x=config.end_x, seed=config.seed
-    )
-    print(f"The dataset path is: {dataset_path}")
+    print("Starting the preparation of the dataset...")
+    dataset_path = prepare_data(start_x=config.start_x, end_x=config.end_x, seed=config.seed)
+    print(f"Dataset prepared. The dataset path is: {dataset_path}")
 
     train_model(
         dataset_path=dataset_path,

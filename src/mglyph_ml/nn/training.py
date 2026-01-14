@@ -1,4 +1,5 @@
 import random
+import time
 
 from clearml import Logger
 import numpy as np
@@ -81,9 +82,14 @@ def train_model(
     errors = []
     test_losses = []
     test_errors = []
+    
+    prev_train_error = None
+    prev_test_error = None
 
     # Train for specified number of epochs
     for epoch in range(1, num_epochs + 1):
+        epoch_start_time = time.time()
+        
         if logger is not None:
             fig1 = visualize_samples(plot_title="Training samples", dataset=data_loader_train.dataset)  # type: ignore
             logger.report_matplotlib_figure(
@@ -105,6 +111,15 @@ def train_model(
         test_losses.append(test_loss)
         test_errors.append(test_error)
 
+        epoch_time = time.time() - epoch_start_time
+        
+        # Calculate RMSE (Root Mean Squared Error) for better comparison with MAE
+        rmse = (loss ** 0.5) * 100.0  # Convert normalized RMSE to x units
+        test_rmse = (test_loss ** 0.5) * 100.0
+        
+        print(f"Epoch {epoch}/{num_epochs} - Train: RMSE={rmse:.2f}, MAE={error:.2f} | "
+              f"Test: RMSE={test_rmse:.2f}, MAE={test_error:.2f} | Time: {epoch_time:.1f}s")
+
         if logger is not None:
             logger.report_scalar(title="Loss", series="Train", value=loss, iteration=epoch)
             logger.report_scalar(
@@ -125,11 +140,30 @@ def train_model(
                 value=test_error,
                 iteration=epoch,
             )
+            logger.report_scalar(
+                title="Epoch Time (s)",
+                series="Time",
+                value=epoch_time,
+                iteration=epoch,
+            )
 
         # Early stopping: stop if error is good enough
         if test_error < early_stopping_threshold:
-            print(f"Early stopping at epoch {epoch+1}: test error {test_error:.4f} x units is below threshold")
+            print(f"Early stopping at epoch {epoch}: test error {test_error:.2f} x units is below threshold")
             break
+        
+        # Early stopping: stop if both train and test errors improved by less than 0.1
+        if prev_train_error is not None and prev_test_error is not None:
+            train_improvement = prev_train_error - error
+            test_improvement = prev_test_error - test_error
+            
+            if train_improvement < 0.05 and test_improvement < 0.05:
+                print(f"Early stopping at epoch {epoch}: minimal improvement "
+                      f"(train: {train_improvement:.3f}, test: {test_improvement:.3f} x units)")
+                break
+        
+        prev_train_error = error
+        prev_test_error = test_error
 
     return losses, errors, test_losses, test_errors
 

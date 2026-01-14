@@ -29,7 +29,8 @@ class GlyphDataset(Dataset):
     It has been designed in a way to provide a variety of datasets so that it's very easy for the user
     of the dataset to only include glyphs that they really want in the dataset.
     
-    This dataset is multiprocessing-safe: each worker process will open its own ZIP file handle.
+    All glyphs are eagerly loaded into RAM at construction time so samples never hit disk during
+    training. Use smaller splits or more memory if the archive is very large.
     """
 
     def __init__(
@@ -41,15 +42,16 @@ class GlyphDataset(Dataset):
         augmentation_seed: int | None = None,
         max_augment_rotation_degrees: float = 5.0,
         max_augment_translation_percent: float = 0.05,
+        preload_format: str = "decoded",
     ):
         self.__path = Path(path) if isinstance(path, str) else path
         self.__max_augment_rotation_degrees = max_augment_rotation_degrees
         self.__max_augment_translation_percent = max_augment_translation_percent
         self.__augmentation_seed = augmentation_seed
         
-        # Don't open archive yet - will be opened lazily per worker process
-        self.__archive = None
-        self.__worker_id = None
+        if preload_format not in ("encoded", "decoded"):
+            raise ValueError(f"preload_format must be 'encoded' or 'decoded', got '{preload_format}'")
+        self.__preload_format = preload_format
         
         # Load manifest from a temporary archive just to get the metadata
         with zipfile.ZipFile(self.__path, "r") as temp_archive:
@@ -62,38 +64,26 @@ class GlyphDataset(Dataset):
             raise ValueError(f"Invalid split: '{split}'. Available splits: {available_splits}")
         
         self.__samples = self.__manifest.samples[split]
+        self.__preloaded_images: list[np.ndarray] | list[bytes] = []
+        self.__labels: list[float] = []
+        self.__preload_data()
         
         self.__set_up_augmentation(augment, normalize)
 
     def __len__(self) -> int:
         return len(self.__samples)
     
-    def _get_archive(self):
-        """
-        Get or create the ZIP archive handle for the current worker.
-        Each worker process needs its own handle for thread-safety.
-        """
-        # Check if we're in a new worker process
-        current_worker = torch.utils.data.get_worker_info()
-        worker_id = current_worker.id if current_worker is not None else None
-        
-        # If worker changed or archive not yet opened, (re)open it
-        if self.__archive is None or self.__worker_id != worker_id:
-            if self.__archive is not None:
-                self.__archive.close()
-            self.__archive = zipfile.ZipFile(self.__path, "r")
-            self.__worker_id = worker_id
-        
-        return self.__archive
-
     def __getitem__(self, index: int) -> tuple:
         sample = self.__samples[index]
-        label = Decimal(sample.x) / Decimal(100.0)
+        label = self.__labels[index]
+
+        if self.__preload_format == "encoded":
+            image_bytes = self.__preloaded_images[index]
+            image_np = self.__decode_image_bytes(image_bytes)  # type: ignore
+        else:
+            image_np = self.__preloaded_images[index]
         
-        # Load image from archive
-        image_pil = self.__get_image_as_pil(sample.filename)
-        image_np = np.asarray(image_pil)  # outputs [H, W, C]
-        image_augmented: np.ndarray = self.__transform(image=image_np)["image"]
+        image_augmented: np.ndarray = self.__transform(image=image_np.copy())["image"]
         image_tensor = Tensor(image_augmented).permute(
             2, 0, 1
         )  # permute [H, W, C] -> [C, H, W]
@@ -101,17 +91,24 @@ class GlyphDataset(Dataset):
         # normalize the image by dividing by 255.0
         # if self.__normalize:
         #     image_tensor /= 255.0
-        return image_tensor, torch.tensor(float(label), dtype=torch.float32)
+        return image_tensor, torch.tensor(label, dtype=torch.float32)
 
-    def __get_image_as_pil(self, filename: str) -> Image.Image:
-        """
-        Loads an image from the archive as a PIL Image.
-        
-        If the image has a transparent background, it will be pasted onto a completely white image and the result
-        will be returned.
-        """
-        archive = self._get_archive()
-        image_bytes = archive.read(filename)
+    def __preload_data(self) -> None:
+        with zipfile.ZipFile(self.__path, "r") as archive:
+            for sample in self.__samples:
+                image_bytes = archive.read(sample.filename)
+                
+                if self.__preload_format == "encoded":
+                    self.__preloaded_images.append(image_bytes)
+                else:
+                    image_np = self.__decode_image_bytes(image_bytes)
+                    self.__preloaded_images.append(image_np)
+                
+                label = Decimal(sample.x) / Decimal(100.0)
+                self.__labels.append(float(label))
+
+    def __decode_image_bytes(self, image_bytes: bytes) -> np.ndarray:
+        """Decode an image from raw bytes into an RGB numpy array."""
         image = Image.open(BytesIO(image_bytes))
 
         if image.mode in ("RGBA", "LA"):
@@ -121,7 +118,7 @@ class GlyphDataset(Dataset):
         else:
             image = image.convert("RGB")
 
-        return image
+        return np.asarray(image)
 
     def get_random_samples(self, n: int) -> list[GlyphSample]:
         indices = random.sample(range(len(self)), n)
@@ -132,15 +129,19 @@ class GlyphDataset(Dataset):
         """Get the size of glyphs in this dataset."""
         if len(self.__samples) == 0:
             raise ValueError("Dataset is empty")
-        first_sample = self.__samples[0]
-        pil_image = self.__get_image_as_pil(first_sample.filename)
-        return pil_image.width, pil_image.height
+        
+        if self.__preload_format == "encoded":
+            image_bytes = self.__preloaded_images[0]
+            image_np = self.__decode_image_bytes(image_bytes)
+            return image_np.shape[1], image_np.shape[0]
+        else:
+            first_image = self.__preloaded_images[0]
+            return first_image.shape[1], first_image.shape[0]
     
     def close(self) -> None:
-        """Close the dataset archive."""
-        if self.__archive is not None:
-            self.__archive.close()
-            self.__archive = None
+        """Release cached images and labels."""
+        self.__preloaded_images = []
+        self.__labels = []
 
     def __set_up_augmentation(self, augment: bool, normalize: bool) -> None:
         step1 = A.Affine(
