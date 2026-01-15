@@ -18,7 +18,7 @@ class ExperimentConfig:
     max_iterations: int = 2
     max_augment_rotation_degrees: float = 5.0
     max_augment_translation_percent: float = 0.05
-    good_enough_x_error: float = 1.0
+    good_enough_x_error: float = 0.1
 
 
 def run_experiment(config: ExperimentConfig) -> None:

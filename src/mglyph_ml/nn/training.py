@@ -113,12 +113,7 @@ def train_model(
 
         epoch_time = time.time() - epoch_start_time
         
-        # Calculate RMSE (Root Mean Squared Error) for better comparison with MAE
-        rmse = (loss ** 0.5) * 100.0  # Convert normalized RMSE to x units
-        test_rmse = (test_loss ** 0.5) * 100.0
-        
-        print(f"Epoch {epoch}/{num_epochs} - Train: RMSE={rmse:.2f}, MAE={error:.2f} | "
-              f"Test: RMSE={test_rmse:.2f}, MAE={test_error:.2f} | Time: {epoch_time:.1f}s")
+        print(f"Epoch {epoch}/{num_epochs} - Train: {error:.2f} | Test: {test_error:.2f} | Time: {epoch_time:.1f}s")
 
         if logger is not None:
             logger.report_scalar(title="Loss", series="Train", value=loss, iteration=epoch)

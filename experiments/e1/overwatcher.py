@@ -31,7 +31,7 @@ print(parameter_sets)
 for i, params in enumerate(parameter_sets):
     print(f"\nRunning experiment with parameter set {i + 1}/{len(parameter_sets)}")
 
-    task_name = f"EXP 2: s={params.start_x}; e={params.end_x}; i=20"
+    task_name = f"EXP 1.1.3: s={params.start_x}; e={params.end_x}; i=20"
 
     cmd = [
         sys.executable,
@@ -43,8 +43,11 @@ for i, params in enumerate(parameter_sets):
         str(params.end_x),
         "--max-iterations",
         str(params.max_iterations),
+        "--no-quick",
+        "--seed",
+        "420",
         "--task-tag",
-        "experiment-1.1.2",
+        "experiment-1.1.3",
     ]
 
     result = subprocess.run(cmd, check=True)

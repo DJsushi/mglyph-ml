@@ -1,0 +1,3 @@
+# The experiment versioning explained
+
+The format `x.y.z` is used, with `x` being the major number, `y` the minor and `z` the patch number. Basically, I will be conducting a number of experiments. If the experiment is pretty similar to the last one, increment `y` by one. If there has been a bug in the experiment and a fix is made, increment `z` by one. If the new experiment is drastically different from the last one (like requiring a completely new NN or dataset), increment `x` by one.

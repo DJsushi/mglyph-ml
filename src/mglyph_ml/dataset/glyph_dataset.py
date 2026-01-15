@@ -64,7 +64,7 @@ class GlyphDataset(Dataset):
             raise ValueError(f"Invalid split: '{split}'. Available splits: {available_splits}")
         
         self.__samples = self.__manifest.samples[split]
-        self.__preloaded_images: list[np.ndarray] | list[bytes] = []
+        self.__preloaded_images: list[np.ndarray | bytes] = []
         self.__labels: list[float] = []
         self.__preload_data()
         
@@ -73,15 +73,17 @@ class GlyphDataset(Dataset):
     def __len__(self) -> int:
         return len(self.__samples)
     
-    def __getitem__(self, index: int) -> tuple:
+    def __getitem__(self, index: int) -> GlyphSample:
         sample = self.__samples[index]
         label = self.__labels[index]
 
         if self.__preload_format == "encoded":
             image_bytes = self.__preloaded_images[index]
-            image_np = self.__decode_image_bytes(image_bytes)  # type: ignore
+            assert isinstance(image_bytes, bytes)
+            image_np = self.__decode_image_bytes(image_bytes)
         else:
             image_np = self.__preloaded_images[index]
+            assert isinstance(image_np, np.ndarray)
         
         image_augmented: np.ndarray = self.__transform(image=image_np.copy())["image"]
         image_tensor = Tensor(image_augmented).permute(
@@ -132,10 +134,12 @@ class GlyphDataset(Dataset):
         
         if self.__preload_format == "encoded":
             image_bytes = self.__preloaded_images[0]
+            assert isinstance(image_bytes, bytes)
             image_np = self.__decode_image_bytes(image_bytes)
             return image_np.shape[1], image_np.shape[0]
         else:
             first_image = self.__preloaded_images[0]
+            assert isinstance(first_image, np.ndarray)
             return first_image.shape[1], first_image.shape[0]
     
     def close(self) -> None:
