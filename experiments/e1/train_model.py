@@ -39,6 +39,7 @@ def train_model(
         max_augment_rotation_degrees=max_augment_rotation_degrees,
         max_augment_translation_percent=max_augment_translation_percent,
     )
+    dataset_val: Dataset = GlyphDataset(path=dataset_path, split="val", augment=False)
     dataset_test: Dataset = GlyphDataset(path=dataset_path, split="test", augment=False)
 
     if quick:
@@ -56,6 +57,13 @@ def train_model(
         pin_memory=True,
         persistent_workers=True  # Keep workers alive between epochs
     )
+    data_loader_val = DataLoader(
+        dataset_val, 
+        batch_size=128,
+        num_workers=num_workers,
+        pin_memory=True,
+        persistent_workers=True
+    )
     data_loader_test = DataLoader(
         dataset_test, 
         batch_size=128,
@@ -71,11 +79,11 @@ def train_model(
     # optimizer = torch.optim.SGD(model.parameters(), lr=0.0003, momentum=0.00001)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-    # Train the model with visualization
+    # Train the model with visualization using validation set
     losses, errors, test_losses, test_errors = train_model(
         model=model,
         data_loader_train=data_loader_train,
-        data_loader_test=data_loader_test,
+        data_loader_test=data_loader_val,
         device=device,
         criterion=criterion,
         optimizer=optimizer,
@@ -83,6 +91,14 @@ def train_model(
         early_stopping_threshold=good_enough_x_error,
         logger=logger,
     )
+
+    # Final evaluation on held-out test set
+    print("\nEvaluating on held-out test set...")
+    from mglyph_ml.nn.training import evaluate_glyph_regressor
+    test_loss, test_error = evaluate_glyph_regressor(model, data_loader_test, device, criterion)
+    test_error *= 100.0
+    logger.report_scalar(title="Final Test Error (x units)", series="Test", value=test_error, iteration=0)
+    print(f"Final test error: {test_error:.2f} x units")
 
     torch.save(model.state_dict(), "models/experiment-1.pt")
 
