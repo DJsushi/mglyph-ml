@@ -19,7 +19,6 @@ class ExperimentConfig:
     max_iterations: int = 2
     max_augment_rotation_degrees: float = 5.0
     max_augment_translation_percent: float = 0.05
-    good_enough_x_error: float = 0.1
 
 
 def run_experiment(config: ExperimentConfig) -> None:
@@ -46,8 +45,7 @@ def run_experiment(config: ExperimentConfig) -> None:
         max_augment_rotation_degrees=config.max_augment_rotation_degrees,
         max_augment_translation_percent=config.max_augment_translation_percent,
         quick=config.quick,
-        max_iterations=config.max_iterations,
-        good_enough_x_error=config.good_enough_x_error,
+        max_iterations=config.max_iterations
     )
 
 

@@ -44,6 +44,9 @@ def gen_universal_dataset(seed: int, dataset_name: str, samples_per_x: int):
     xvalues_square = np_gen.uniform(0.0, 100.0, total_samples_shape)
     xvalues_triangle = np_gen.uniform(0.0, 100.0, total_samples_shape)
     xvalues_circle = np_gen.uniform(0.0, 100.0, total_samples_shape)
+    xvalues_square.sort()
+    xvalues_triangle.sort()
+    xvalues_circle.sort()
 
     for x in xvalues_square:
         ds.add_sample(square, x, split="uni", metadata={"shape": ManifestSampleShape.SQUARE})

@@ -8,7 +8,6 @@ def train_model(
     max_augment_translation_percent: float,
     quick: bool,
     max_iterations: int,
-    good_enough_x_error: float,
 ):
     import random
 
@@ -49,27 +48,19 @@ def train_model(
     # Use multiple workers for faster data loading and pin_memory for faster GPU transfer
     num_workers = 32  # Adjust based on your CPU cores
     data_loader_train = DataLoader(
-        dataset_train, 
-        batch_size=128, 
-        shuffle=True, 
+        dataset_train,
+        batch_size=128,
+        shuffle=True,
         generator=generator,
         num_workers=num_workers,
         pin_memory=True,
-        persistent_workers=True  # Keep workers alive between epochs
+        persistent_workers=True,  # Keep workers alive between epochs
     )
     data_loader_val = DataLoader(
-        dataset_val, 
-        batch_size=128,
-        num_workers=num_workers,
-        pin_memory=True,
-        persistent_workers=True
+        dataset_val, batch_size=128, num_workers=num_workers, pin_memory=True, persistent_workers=True
     )
     data_loader_test = DataLoader(
-        dataset_test, 
-        batch_size=128,
-        num_workers=num_workers,
-        pin_memory=True,
-        persistent_workers=True
+        dataset_test, batch_size=128, num_workers=num_workers, pin_memory=True, persistent_workers=True
     )
 
     model = GlyphRegressor()
@@ -88,13 +79,13 @@ def train_model(
         criterion=criterion,
         optimizer=optimizer,
         num_epochs=max_iterations,
-        early_stopping_threshold=good_enough_x_error,
         logger=logger,
     )
 
     # Final evaluation on held-out test set
     print("\nEvaluating on held-out test set...")
     from mglyph_ml.nn.training import evaluate_glyph_regressor
+
     test_loss, test_error = evaluate_glyph_regressor(model, data_loader_test, device, criterion)
     test_error *= 100.0
     logger.report_scalar(title="Final Test Error (x units)", series="Test", value=test_error, iteration=0)

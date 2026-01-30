@@ -59,7 +59,6 @@ def train_model(
     criterion,
     optimizer,
     num_epochs: int = 10,
-    early_stopping_threshold: float = 0.3,
     logger: Logger | None = None,
 ) -> tuple[list[float], list[float], list[float], list[float]]:
     """
@@ -83,8 +82,8 @@ def train_model(
     test_losses = []
     test_errors = []
     
-    prev_train_error = None
-    prev_test_error = None
+    # prev_train_error = None
+    # prev_test_error = None
 
     # Train for specified number of epochs
     for epoch in range(1, num_epochs + 1):
@@ -141,24 +140,19 @@ def train_model(
                 value=epoch_time,
                 iteration=epoch,
             )
-
-        # Early stopping: stop if error is good enough
-        if test_error < early_stopping_threshold:
-            print(f"Early stopping at epoch {epoch}: test error {test_error:.2f} x units is below threshold")
-            break
         
         # Early stopping: stop if both train and test errors improved by less than 0.1
-        if prev_train_error is not None and prev_test_error is not None:
-            train_improvement = prev_train_error - error
-            test_improvement = prev_test_error - test_error
+        # if prev_train_error is not None and prev_test_error is not None:
+        #     train_improvement = prev_train_error - error
+        #     test_improvement = prev_test_error - test_error
             
-            if train_improvement < 0.05 and test_improvement < 0.05:
-                print(f"Early stopping at epoch {epoch}: minimal improvement "
-                      f"(train: {train_improvement:.3f}, test: {test_improvement:.3f} x units)")
-                break
+        #     if train_improvement < 0.05 and test_improvement < 0.05:
+        #         print(f"Early stopping at epoch {epoch}: minimal improvement "
+        #               f"(train: {train_improvement:.3f}, test: {test_improvement:.3f} x units)")
+        #         break
         
-        prev_train_error = error
-        prev_test_error = test_error
+        # prev_train_error = error
+        # prev_test_error = test_error
 
     return losses, errors, test_losses, test_errors
 
