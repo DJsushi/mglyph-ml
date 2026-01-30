@@ -40,79 +40,36 @@ class GlyphDataset(Dataset):
         labels: list[float],  # (N,), float32
         transform: Callable[[np.ndarray], np.ndarray] | None = None,
     ):
+        assert all(img.dtype == np.uint8 for img in images), "All images must have dtype uint8"
+
         self.__images = images
         self.__labels = labels
+        self.__transform = transform
 
     def __len__(self) -> int:
         return len(self.__images)
 
     def __getitem__(self, index: int) -> GlyphSample:
+        image = self.__images[index]
         label = self.__labels[index]
 
-        image_np = self.__preloaded_images[index]
-        assert isinstance(image_np, np.ndarray)
+        if self.__transform is not None:
+            image = self.__transform(image.copy())
 
-        image_augmented: np.ndarray = self.__transform(image=image_np.copy())["image"]
-        image_tensor = Tensor(image_augmented).permute(2, 0, 1)  # permute [H, W, C] -> [C, H, W]
-        # TODO: this type of normalization is actually somehow worse than dividing by 255.0
-        # normalize the image by dividing by 255.0
-        # if self.__normalize:
-        #     image_tensor /= 255.0
+        image_tensor = torch.from_numpy(image).permute(2, 0, 1).float() / 255.0
+
         return image_tensor, torch.tensor(label, dtype=torch.float32)
-
-    def __decode_image_bytes(self, image_bytes: bytes) -> np.ndarray:
-        """Decode an image from raw bytes into an RGB numpy array."""
-        image = Image.open(BytesIO(image_bytes))
-
-        if image.mode in ("RGBA", "LA"):
-            background = Image.new("RGBA", image.size, (255, 255, 255, 255))
-            background.paste(image, mask=image.split()[-1])
-            image = background.convert("RGB")
-        else:
-            image = image.convert("RGB")
-
-        return np.asarray(image)
 
     def get_random_samples(self, n: int) -> list[GlyphSample]:
         indices = random.sample(range(len(self)), n)
         return [self[index] for index in indices]
 
-    @cached_property
-    def glyph_size(self) -> tuple[int, int]:
-        """Get the size of glyphs in this dataset."""
-        if len(self.__samples) == 0:
-            raise ValueError("Dataset is empty")
+    # @cached_property
+    # def glyph_size(self) -> tuple[int, int]:
+    #     """Get the size of glyphs in this dataset."""
+    #     if len(self.__images) == 0:
+    #         raise ValueError("Dataset is empty")
 
-        first_image = self.__preloaded_images[0]
-        assert isinstance(first_image, np.ndarray)
-        return first_image.shape[1], first_image.shape[0]
-
-    def close(self) -> None:
-        """Release cached images and labels."""
-        self.__preloaded_images = []
-        self.__labels = []
-
-    def __set_up_augmentation(self, augment: bool, normalize: bool) -> None:
-        step1 = A.Affine(
-            rotate=(
-                -self.__max_augment_rotation_degrees,
-                self.__max_augment_rotation_degrees,
-            ),
-            translate_percent=(
-                -self.__max_augment_translation_percent,
-                self.__max_augment_translation_percent,
-            ),
-            fit_output=False,
-            keep_ratio=True,
-            border_mode=cv2.BORDER_CONSTANT,
-            fill=255,
-            p=float(augment),
-        )
-        step2 = A.Normalize(normalization="min_max", p=float(normalize))
-        self.__original_transform = A.Compose(
-            [step1, step2], seed=self.__augmentation_seed  # temporarily removed step2
-        )
-        self.reset_transform()
-
-    def reset_transform(self):
-        self.__transform = deepcopy(self.__original_transform)
+    #     first_image = self.__preloaded_images[0]
+    #     assert isinstance(first_image, np.ndarray)
+    #     return first_image.shape[1], first_image.shape[0]

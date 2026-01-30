@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from clearml import Task
 from mglyph_ml.experiment.e1.prepare_data import prepare_data
-from mglyph_ml.experiment.e1.train_model import train_model
+from mglyph_ml.experiment.e1.train_model import train_and_test_model
 
 
 @dataclass
@@ -43,13 +43,13 @@ def run_experiment(config: ExperimentConfig) -> None:
         )
         print(f"Dataset prepared. The dataset path is: {dataset_path}")
 
-    train_model(
+    train_and_test_model(
         dataset_path=dataset_path,
         seed=config.seed,
         max_augment_rotation_degrees=config.max_augment_rotation_degrees,
         max_augment_translation_percent=config.max_augment_translation_percent,
         quick=config.quick,
-        max_iterations=config.max_iterations,
+        max_epochs=config.max_iterations,
     )
 
 

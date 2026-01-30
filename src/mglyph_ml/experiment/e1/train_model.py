@@ -1,25 +1,27 @@
-from pathlib import Path
+import random
+
+import numpy as np
+import torch
+from clearml import Task
+from torch import nn
+from torch.utils.data import DataLoader
+
+from mglyph_ml.dataset.glyph_dataset import GlyphDataset
+from mglyph_ml.nn.evaluation import evaluate_glyph_regressor
+from mglyph_ml.nn.glyph_regressor_gen2 import GlyphRegressor
+from mglyph_ml.nn.training import training_loop
 
 
-def train_model(
-    dataset_path: Path,
+def train_and_test_model(
+    dataset_train: GlyphDataset,
+    dataset_gap: GlyphDataset,
+    dataset_test: GlyphDataset,
     seed: int,
-    max_augment_rotation_degrees: float,
-    max_augment_translation_percent: float,
+    data_loader_num_workers: int,
+    batch_size: int,
     quick: bool,
-    max_iterations: int,
+    max_epochs: int,
 ):
-    import random
-
-    import numpy as np
-    import torch
-    from clearml import Task
-    from torch import nn
-    from torch.utils.data import DataLoader, Dataset, Subset
-
-    from mglyph_ml.dataset.glyph_dataset import GlyphDataset
-    from mglyph_ml.nn.glyph_regressor_gen2 import GlyphRegressor
-    from mglyph_ml.nn.training import train_model
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Device used for training: {device}")
@@ -31,36 +33,33 @@ def train_model(
 
     logger = Task.current_task().logger
 
-    dataset_train: Dataset = GlyphDataset(
-        path=dataset_path,
-        split="uni",
-        augmentation_seed=seed,
-        max_augment_rotation_degrees=max_augment_rotation_degrees,
-        max_augment_translation_percent=max_augment_translation_percent,
-    )
-    dataset_gap: Dataset = GlyphDataset(path=dataset_path, split="val", augment=False)
-    dataset_test: Dataset = GlyphDataset(path=dataset_path, split="test", augment=False)
-
-    if quick:
-        indices_debug = list(range(0, len(dataset_train), 16))
-        dataset_train = Subset(dataset_train, indices_debug)
+    # if quick:
+    #     indices_debug = list(range(0, len(dataset_train), 32))
+    #     dataset_train = Subset(dataset_train, indices_debug)
 
     # Use multiple workers for faster data loading and pin_memory for faster GPU transfer
-    num_workers = 32  # Adjust based on your CPU cores
     data_loader_train = DataLoader(
         dataset_train,
-        batch_size=128,
+        batch_size=batch_size,
         shuffle=True,
         generator=generator,
-        num_workers=num_workers,
+        num_workers=data_loader_num_workers,
         pin_memory=True,
         persistent_workers=True,  # Keep workers alive between epochs
     )
-    data_loader = DataLoader(
-        dataset, batch_size=128, num_workers=num_workers, pin_memory=True, persistent_workers=True
-    )
     data_loader_gap = DataLoader(
-        dataset_gap, batch_size=128, num_workers=num_workers, pin_memory=True, persistent_workers=True
+        dataset_gap,
+        batch_size=batch_size,
+        num_workers=data_loader_num_workers,
+        pin_memory=True,
+        persistent_workers=True,
+    )
+    data_loader_test = DataLoader(
+        dataset_test,
+        batch_size=batch_size,
+        num_workers=data_loader_num_workers,
+        pin_memory=True,
+        persistent_workers=True,
     )
 
     model = GlyphRegressor()
@@ -71,25 +70,24 @@ def train_model(
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     # Train the model with visualization using validation set
-    losses, errors, gap_losses, gap_errors = train_model(
+    training_loop(
         model=model,
         data_loader_train=data_loader_train,
-        data_loader_test=data_loader_val,
+        data_loader_gap=data_loader_gap,
         device=device,
         criterion=criterion,
         optimizer=optimizer,
-        num_epochs=max_iterations,
+        num_epochs=max_epochs,
         logger=logger,
     )
 
     # Final evaluation on held-out test set
     print("\nEvaluating on held-out test set...")
-    from mglyph_ml.nn.training import evaluate_glyph_regressor
 
-    test_loss, gap_error = evaluate_glyph_regressor(model, data_loader_gap, device, criterion)
-    gap_error *= 100.0
-    logger.report_scalar(title="Final Test Error (x units)", series="Test", value=gap_error, iteration=0)
-    print(f"Final test error: {gap_error:.2f} x units")
+    _, test_error = evaluate_glyph_regressor(model, data_loader_test, device, criterion)
+    test_error_x = test_error * 100.0
+    logger.report_scalar(title="Final Test Error (x units)", series="Test", value=test_error_x, iteration=0)
+    print(f"Final test error over the entire interval: {test_error_x:.2f} x units")
 
     torch.save(model.state_dict(), "models/experiment-1.pt")
 
