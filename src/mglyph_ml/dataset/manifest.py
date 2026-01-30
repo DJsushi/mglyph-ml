@@ -9,7 +9,7 @@ from typing import TypeVar, Generic
 
 
 class ManifestSample(BaseModel):
-    x: Decimal
+    x: float
     filename: str
     metadata: dict
 
@@ -25,5 +25,5 @@ class DatasetManifest(BaseModel, Generic[T]):
     samples: dict[str, list[T]]
 
     @staticmethod
-    def get_sample_filename(id: Decimal) -> str:
+    def get_sample_filename(id: float) -> str:
         return f"{id}.png"

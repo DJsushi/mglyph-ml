@@ -1,22 +1,22 @@
-from copy import deepcopy
-from functools import cached_property
 import math
 import os
-from pathlib import Path
 import random
+import zipfile
+from copy import deepcopy
 from dataclasses import dataclass
 from decimal import Decimal
+from functools import cached_property
 from io import BytesIO
-from typing import Literal, Union
-import zipfile
+from pathlib import Path
+from typing import Callable, Literal, Optional, Union
 
 import albumentations as A
 import cv2
 import numpy as np
 import torch
+from PIL import Image
 from torch import Tensor
 from torch.utils.data import Dataset
-from PIL import Image
 
 from mglyph_ml.dataset.manifest import DatasetManifest, ManifestSample
 
@@ -36,40 +36,15 @@ class GlyphDataset(Dataset):
 
     def __init__(
         self,
-        path: str | Path,
-        split: str,
-        gap_start_x: float,
-        gap_end_x: float,
-        augment: bool = True,
-        normalize: bool = True,
-        augmentation_seed: int | None = None,
-        max_augment_rotation_degrees: float = 5.0,
-        max_augment_translation_percent: float = 0.05,
+        images: list[np.ndarray],  # (N, C, H, W), uint8
+        labels: list[float],  # (N,), float32
+        transform: Callable[[np.ndarray], np.ndarray] | None = None,
     ):
-        self.__path = Path(path) if isinstance(path, str) else path
-        self.__max_augment_rotation_degrees = max_augment_rotation_degrees
-        self.__max_augment_translation_percent = max_augment_translation_percent
-        self.__augmentation_seed = augmentation_seed
-
-        # Load manifest from a temporary archive just to get the metadata
-        with zipfile.ZipFile(self.__path, "r") as temp_archive:
-            manifest_data = temp_archive.read("manifest.json")
-            self.__manifest = DatasetManifest.model_validate_json(manifest_data)
-
-        # Select the appropriate samples based on split
-        if split not in self.__manifest.samples:
-            available_splits = list(self.__manifest.samples.keys())
-            raise ValueError(f"Invalid split: '{split}'. Available splits: {available_splits}")
-
-        self.__samples = self.__manifest.samples[split]
-        self.__preloaded_images: list[np.ndarray | bytes] = []
-        self.__labels: list[float] = []
-        self.__preload_data()
-
-        self.__set_up_augmentation(augment, normalize)
+        self.__images = images
+        self.__labels = labels
 
     def __len__(self) -> int:
-        return len(self.__samples)
+        return len(self.__images)
 
     def __getitem__(self, index: int) -> GlyphSample:
         label = self.__labels[index]
@@ -84,17 +59,6 @@ class GlyphDataset(Dataset):
         # if self.__normalize:
         #     image_tensor /= 255.0
         return image_tensor, torch.tensor(label, dtype=torch.float32)
-
-    def __preload_data(self) -> None:
-        with zipfile.ZipFile(self.__path, "r") as archive:
-            for sample in self.__samples:
-                image_bytes = archive.read(sample.filename)
-
-                image_np = self.__decode_image_bytes(image_bytes)
-                self.__preloaded_images.append(image_np)
-
-                label = Decimal(sample.x) / Decimal(100.0)
-                self.__labels.append(float(label))
 
     def __decode_image_bytes(self, image_bytes: bytes) -> np.ndarray:
         """Decode an image from raw bytes into an RGB numpy array."""

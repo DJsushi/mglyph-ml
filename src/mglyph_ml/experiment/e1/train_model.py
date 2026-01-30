@@ -38,7 +38,7 @@ def train_model(
         max_augment_rotation_degrees=max_augment_rotation_degrees,
         max_augment_translation_percent=max_augment_translation_percent,
     )
-    dataset_val: Dataset = GlyphDataset(path=dataset_path, split="val", augment=False)
+    dataset_gap: Dataset = GlyphDataset(path=dataset_path, split="val", augment=False)
     dataset_test: Dataset = GlyphDataset(path=dataset_path, split="test", augment=False)
 
     if quick:
