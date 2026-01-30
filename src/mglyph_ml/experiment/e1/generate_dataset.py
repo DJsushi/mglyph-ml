@@ -4,14 +4,14 @@ from pathlib import Path
 
 import mglyph as mg
 import numpy as np
-from util import ManifestSampleShape
 
 from mglyph_ml.dataset.export import create_dataset
+from mglyph_ml.experiment.e1.util import ManifestSampleShape
 
 
 def gen_universal_dataset(seed: int, dataset_name: str, samples_per_x: int):
 
-    path = Path(f"data/{dataset_name}.dataset")
+    path = Path(f"data/{dataset_name}.mglyph")
 
     # Check if dataset already exists
     if path.exists():

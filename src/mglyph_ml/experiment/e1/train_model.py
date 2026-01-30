@@ -1,27 +1,28 @@
 import random
+from pathlib import Path
 
 import numpy as np
 import torch
 from clearml import Task
 from torch import nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset, Subset
 
-from mglyph_ml.dataset.glyph_dataset import GlyphDataset
 from mglyph_ml.nn.evaluation import evaluate_glyph_regressor
 from mglyph_ml.nn.glyph_regressor_gen2 import GlyphRegressor
 from mglyph_ml.nn.training import training_loop
 
 
 def train_and_test_model(
-    dataset_train: GlyphDataset,
-    dataset_gap: GlyphDataset,
-    dataset_test: GlyphDataset,
+    dataset_train: Dataset,
+    dataset_gap: Dataset,
+    dataset_test: Dataset,
     seed: int,
     data_loader_num_workers: int,
     batch_size: int,
     quick: bool,
     max_epochs: int,
-):
+    model_save_path: Path | None = None,
+) -> None:
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Device used for training: {device}")
@@ -33,9 +34,13 @@ def train_and_test_model(
 
     logger = Task.current_task().logger
 
-    # if quick:
-    #     indices_debug = list(range(0, len(dataset_train), 32))
-    #     dataset_train = Subset(dataset_train, indices_debug)
+    if quick:
+        indices_debug = list(range(0, len(dataset_train), 32))
+        dataset_train = Subset(dataset_train, indices_debug)
+        indices_debug = list(range(0, len(dataset_gap), 32))
+        dataset_gap = Subset(dataset_gap, indices_debug)
+        indices_debug = list(range(0, len(dataset_test), 32))
+        dataset_test = Subset(dataset_test, indices_debug)
 
     # Use multiple workers for faster data loading and pin_memory for faster GPU transfer
     data_loader_train = DataLoader(
@@ -89,6 +94,5 @@ def train_and_test_model(
     logger.report_scalar(title="Final Test Error (x units)", series="Test", value=test_error_x, iteration=0)
     print(f"Final test error over the entire interval: {test_error_x:.2f} x units")
 
-    torch.save(model.state_dict(), "models/experiment-1.pt")
-
-    return model
+    if model_save_path is not None:
+        torch.save(model.state_dict(), model_save_path)

@@ -28,7 +28,7 @@ type Drawer = Callable[[float, Canvas], None]
 @dataclasses.dataclass
 class _Sample:
     drawer: Drawer
-    x: Decimal
+    x: float
     metadata: dict
     split: str
 
@@ -40,7 +40,7 @@ class _DatasetBuilder:
         self._samples: list[_Sample] = []
         self._number_of_samples: int = 0
 
-    def add_sample(self, drawer: Drawer, x: Decimal, split: str, metadata: dict = {}):
+    def add_sample(self, drawer: Drawer, x: float, split: str, metadata: dict = {}):
         """Add a sample to the specified split (e.g., 'train', 'test', 'val')."""
         self._samples.append(_Sample(drawer, x, metadata, split))
 

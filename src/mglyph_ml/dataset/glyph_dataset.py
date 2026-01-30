@@ -26,12 +26,6 @@ type GlyphSample = tuple[Tensor, Tensor]
 class GlyphDataset(Dataset):
     """
     This class is used to feed glyphs into the neural network.
-
-    It has been designed in a way to provide a variety of datasets so that it's very easy for the user
-    of the dataset to only include glyphs that they really want in the dataset.
-
-    All glyphs are eagerly loaded into RAM at construction time so samples never hit disk during
-    training. Use smaller splits or more memory if the archive is very large.
     """
 
     def __init__(
@@ -43,7 +37,7 @@ class GlyphDataset(Dataset):
         assert all(img.dtype == np.uint8 for img in images), "All images must have dtype uint8"
 
         self.__images = images
-        self.__labels = labels
+        self.__labels = [label / 100.0 for label in labels]
         self.__transform = transform
 
     def __len__(self) -> int:
