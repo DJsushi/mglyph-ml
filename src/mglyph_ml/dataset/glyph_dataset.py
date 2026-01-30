@@ -38,21 +38,18 @@ class GlyphDataset(Dataset):
         self,
         path: str | Path,
         split: str,
+        gap_start_x: float,
+        gap_end_x: float,
         augment: bool = True,
         normalize: bool = True,
         augmentation_seed: int | None = None,
         max_augment_rotation_degrees: float = 5.0,
         max_augment_translation_percent: float = 0.05,
-        preload_format: Literal["decoded", "encoded"] = "decoded",
     ):
         self.__path = Path(path) if isinstance(path, str) else path
         self.__max_augment_rotation_degrees = max_augment_rotation_degrees
         self.__max_augment_translation_percent = max_augment_translation_percent
         self.__augmentation_seed = augmentation_seed
-
-        if preload_format not in ("encoded", "decoded"):
-            raise ValueError(f"preload_format must be 'encoded' or 'decoded', got '{preload_format}'")
-        self.__preload_format = preload_format
 
         # Load manifest from a temporary archive just to get the metadata
         with zipfile.ZipFile(self.__path, "r") as temp_archive:
@@ -75,16 +72,10 @@ class GlyphDataset(Dataset):
         return len(self.__samples)
 
     def __getitem__(self, index: int) -> GlyphSample:
-        sample = self.__samples[index]
         label = self.__labels[index]
 
-        if self.__preload_format == "encoded":
-            image_bytes = self.__preloaded_images[index]
-            assert isinstance(image_bytes, bytes)
-            image_np = self.__decode_image_bytes(image_bytes)
-        else:
-            image_np = self.__preloaded_images[index]
-            assert isinstance(image_np, np.ndarray)
+        image_np = self.__preloaded_images[index]
+        assert isinstance(image_np, np.ndarray)
 
         image_augmented: np.ndarray = self.__transform(image=image_np.copy())["image"]
         image_tensor = Tensor(image_augmented).permute(2, 0, 1)  # permute [H, W, C] -> [C, H, W]
@@ -99,11 +90,8 @@ class GlyphDataset(Dataset):
             for sample in self.__samples:
                 image_bytes = archive.read(sample.filename)
 
-                if self.__preload_format == "encoded":
-                    self.__preloaded_images.append(image_bytes)
-                else:
-                    image_np = self.__decode_image_bytes(image_bytes)
-                    self.__preloaded_images.append(image_np)
+                image_np = self.__decode_image_bytes(image_bytes)
+                self.__preloaded_images.append(image_np)
 
                 label = Decimal(sample.x) / Decimal(100.0)
                 self.__labels.append(float(label))
@@ -131,15 +119,9 @@ class GlyphDataset(Dataset):
         if len(self.__samples) == 0:
             raise ValueError("Dataset is empty")
 
-        if self.__preload_format == "encoded":
-            image_bytes = self.__preloaded_images[0]
-            assert isinstance(image_bytes, bytes)
-            image_np = self.__decode_image_bytes(image_bytes)
-            return image_np.shape[1], image_np.shape[0]
-        else:
-            first_image = self.__preloaded_images[0]
-            assert isinstance(first_image, np.ndarray)
-            return first_image.shape[1], first_image.shape[0]
+        first_image = self.__preloaded_images[0]
+        assert isinstance(first_image, np.ndarray)
+        return first_image.shape[1], first_image.shape[0]
 
     def close(self) -> None:
         """Release cached images and labels."""

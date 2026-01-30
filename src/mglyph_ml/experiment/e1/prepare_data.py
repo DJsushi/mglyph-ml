@@ -3,7 +3,7 @@ from pathlib import Path
 
 import mglyph as mg
 import numpy as np
-from util import ManifestSampleShape
+from mglyph_ml.experiment.e1.util import ManifestSampleShape
 
 from mglyph_ml.dataset.export import create_dataset
 

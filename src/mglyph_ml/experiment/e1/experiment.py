@@ -2,9 +2,8 @@ import argparse
 from dataclasses import dataclass
 
 from clearml import Task
-from clearml.backend_api.services import projects
-from prepare_data import prepare_data
-from train_model import train_model
+from mglyph_ml.experiment.e1.prepare_data import prepare_data
+from mglyph_ml.experiment.e1.train_model import train_model
 
 
 @dataclass
@@ -12,17 +11,20 @@ class ExperimentConfig:
     task_name: str
     task_tag: str
     dataset_path: str | None = None
-    start_x: float | None = None
-    end_x: float | None = None
+    gap_start_x: float | None = None
+    gap_end_x: float | None = None
     quick: bool = True
     seed: int = 420
     max_iterations: int = 2
     max_augment_rotation_degrees: float = 5.0
     max_augment_translation_percent: float = 0.05
+    offline: bool = False
 
 
 def run_experiment(config: ExperimentConfig) -> None:
     """Run a single experiment with the specified parameters."""
+    Task.set_offline(config.offline)
+    
     task: Task = Task.init(project_name="mglyph-ml", task_name=config.task_name)
     task.add_tags(config.task_tag)
 
@@ -33,10 +35,12 @@ def run_experiment(config: ExperimentConfig) -> None:
         print(f"Using existing dataset: {config.dataset_path}")
         dataset_path = config.dataset_path
     else:
-        if config.start_x is None or config.end_x is None:
+        if config.gap_start_x is None or config.gap_end_x is None:
             raise ValueError("Either 'dataset_path' or both 'start_x' and 'end_x' must be provided.")
         print("Generating new dataset...")
-        dataset_path = prepare_data(gap_start_x=config.start_x, gap_end_x=config.end_x, seed=config.seed)
+        dataset_path = prepare_data(
+            gap_start_x=config.gap_start_x, gap_end_x=config.gap_end_x, seed=config.seed
+        )
         print(f"Dataset prepared. The dataset path is: {dataset_path}")
 
     train_model(
@@ -45,7 +49,7 @@ def run_experiment(config: ExperimentConfig) -> None:
         max_augment_rotation_degrees=config.max_augment_rotation_degrees,
         max_augment_translation_percent=config.max_augment_translation_percent,
         quick=config.quick,
-        max_iterations=config.max_iterations
+        max_iterations=config.max_iterations,
     )
 
 
@@ -85,8 +89,8 @@ if __name__ == "__main__":
         task_name=args.task_name,
         task_tag=args.task_tag,
         dataset_path=args.dataset_path,
-        start_x=args.start_x,
-        end_x=args.end_x,
+        gap_start_x=args.start_x,
+        gap_end_x=args.end_x,
         quick=args.quick,
         seed=args.seed,
         max_iterations=args.max_iterations,
