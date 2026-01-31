@@ -96,45 +96,60 @@ def training_loop(
                 title="Test samples", series="idk", figure=fig2, report_image=True, iteration=epoch
             )
 
-        loss, error = train_one_epoch(model, data_loader_train, device, criterion, optimizer)
-        losses.append(loss)
-        errors.append(error)
+        loss_train, error_train = train_one_epoch(model, data_loader_train, device, criterion, optimizer)
+        losses.append(loss_train)
+        errors.append(error_train)
 
-        gap_loss, gap_error = evaluate_glyph_regressor(model, data_loader_gap, device, criterion)
-        test_losses.append(gap_loss)
-        test_errors.append(gap_error)
+        loss_gap, error_gap = evaluate_glyph_regressor(model, data_loader_gap, device, criterion)
+        test_losses.append(loss_gap)
+        test_errors.append(error_gap)
 
         epoch_time = time.time() - epoch_start_time
 
+        error_x_train = error_train * 100.0
+        error_x_gap = error_gap * 100.0
         print(
-            f"Epoch {epoch}/{num_epochs} - Train: {error:.2f} | Test: {gap_error:.2f} | Time: {epoch_time:.1f}s"
+            f"Epoch {epoch}/{num_epochs} - Train (x units): {error_x_train:.2f} | "
+            f"Gap (x units): {error_x_gap:.2f} | Time: {epoch_time:.1f}s"
         )
 
         if logger is not None:
-            logger.report_scalar(title="Loss", series="Train", value=loss, iteration=epoch)
-            logger.report_scalar(
-                title="Loss",
-                series="Test",
-                value=gap_loss,
-                iteration=epoch,
-            )
-            logger.report_scalar(
-                title="Error (x units)",
-                series="Train",
-                value=error,
-                iteration=epoch,
-            )
-            logger.report_scalar(
-                title="Error (x units)",
-                series="Test",
-                value=gap_error,
-                iteration=epoch,
-            )
-            logger.report_scalar(
-                title="Epoch Time (s)",
-                series="Time",
-                value=epoch_time,
-                iteration=epoch,
-            )
+            report_values(logger, epoch, loss_train, loss_gap, error_x_train, error_x_gap, epoch_time)
 
     return losses, errors, test_losses, test_errors
+
+
+def report_values(
+    logger: Logger,
+    epoch: int,
+    loss_train: float,
+    loss_gap: float,
+    error_x_train: float,
+    error_x_gap: float,
+    epoch_time: float,
+):
+    logger.report_scalar(title="Loss", series="Train", value=loss_train, iteration=epoch)
+    logger.report_scalar(
+        title="Loss",
+        series="Gap",
+        value=loss_gap,
+        iteration=epoch,
+    )
+    logger.report_scalar(
+        title="Error (x units)",
+        series="Train",
+        value=error_x_train,
+        iteration=epoch,
+    )
+    logger.report_scalar(
+        title="Error (x units)",
+        series="Gap",
+        value=error_x_gap,
+        iteration=epoch,
+    )
+    logger.report_scalar(
+        title="Epoch Time (s)",
+        series="Time",
+        value=epoch_time,
+        iteration=epoch,
+    )

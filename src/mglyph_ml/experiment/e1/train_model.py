@@ -13,6 +13,7 @@ from mglyph_ml.nn.training import training_loop
 
 
 def train_and_test_model(
+    device: str,
     dataset_train: Dataset,
     dataset_gap: Dataset,
     dataset_test: Dataset,
@@ -23,8 +24,6 @@ def train_and_test_model(
     max_epochs: int,
     model_save_path: Path | None = None,
 ) -> None:
-
-    device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Device used for training: {device}")
 
     # Ensure reproducible weight initialization and dataloader shuffling

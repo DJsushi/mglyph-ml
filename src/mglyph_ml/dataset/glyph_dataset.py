@@ -32,7 +32,7 @@ class GlyphDataset(Dataset):
         self,
         images: list[np.ndarray],  # (N, C, H, W), uint8
         labels: list[float],  # (N,), float32
-        transform: Callable[[np.ndarray], np.ndarray] | None = None,
+        transform: Callable[[np.ndarray], torch.Tensor],  # Input: (H, W, C) uint8 [0, 255] -> Output: (C, H, W) float32 normalized
     ):
         assert all(img.dtype == np.uint8 for img in images), "All images must have dtype uint8"
 
@@ -47,10 +47,7 @@ class GlyphDataset(Dataset):
         image = self.__images[index]
         label = self.__labels[index]
 
-        if self.__transform is not None:
-            image = self.__transform(image.copy())
-
-        image_tensor = torch.from_numpy(image).permute(2, 0, 1).float() / 255.0
+        image_tensor = self.__transform(image)
 
         return image_tensor, torch.tensor(label, dtype=torch.float32)
 
