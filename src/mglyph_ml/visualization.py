@@ -6,6 +6,7 @@ import torch
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 from torch import nn
+from torch.utils.data import DataLoader
 
 from mglyph_ml.dataset.glyph_dataset import GlyphDataset
 from mglyph_ml.dataset.glyph_importer import GlyphImporter
@@ -39,9 +40,7 @@ def visualize_test_predictions(
 
     # Create datasets - one normalized for prediction, one unnormalized for display
     dataset_test = GlyphDataset(*importers, augmentation_seed=augmentation_seed)
-    temp_dataset_viz = GlyphDataset(
-        *importers, normalize=False, augmentation_seed=augmentation_seed
-    )
+    temp_dataset_viz = GlyphDataset(*importers, normalize=False, augmentation_seed=augmentation_seed)
 
     # Get random samples from test set
     temp_dataset_viz.reset_transform()
@@ -75,9 +74,7 @@ def visualize_test_predictions(
             errors.append(error)
 
             # Convert image for display
-            img = (
-                img_tensor_display.numpy().clip(0, 1).transpose(1, 2, 0)
-            )  # [C, H, W] -> [H, W, C]
+            img = img_tensor_display.numpy().clip(0, 1).transpose(1, 2, 0)  # [C, H, W] -> [H, W, C]
 
             # Display
             axes[index].imshow(img)
@@ -96,7 +93,7 @@ def visualize_test_predictions(
 
 def visualize_samples(
     plot_title: str,
-    dataset: GlyphDataset,
+    data_loader: DataLoader,
     num_samples: int = 9,
     figsize: tuple[int, int] = (6, 6),
 ) -> Figure:
@@ -116,7 +113,7 @@ def visualize_samples(
         - Grid of test images with their labels
     """
     # Get random samples
-    sample_indices = random.sample(range(len(dataset)), num_samples)
+    sample_indices = list(range(num_samples))
 
     # Calculate grid dimensions
     ncols = 3
@@ -125,7 +122,7 @@ def visualize_samples(
     axes = np.array(axes).reshape(-1)  # Flatten for easy indexing
 
     for index, sample_idx in enumerate(sample_indices):
-        image, label = dataset[sample_idx]
+        image, label = list(data_loader)[sample_idx]
 
         # Convert image for display
         img = image.numpy().clip(0, 1).transpose(1, 2, 0)  # [C, H, W] -> [H, W, C]

@@ -1,8 +1,11 @@
 import os
+import random
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from io import BytesIO
 from pathlib import Path
+from zipfile import ZipFile
 
 import albumentations as A
 import cv2
@@ -38,38 +41,39 @@ def run_experiment(config: ExperimentConfig) -> None:
     """Run a single experiment with the specified parameters."""
 
     Task.set_offline(config.offline)
-    task: Task = Task.init(project_name="mglyph-ml", task_name=config.task_name)
+    task: Task = Task.init(project_name="mglyph-ml", task_name=config.task_name, reuse_last_task_id=False)
     task.add_tags(config.task_tag)
     task.connect(config)
 
-    temp_archive = zipfile.ZipFile(config.dataset_path, "r")
+    with open(config.dataset_path, "rb") as f:
+        temp_archive = ZipFile(BytesIO(f.read()))
 
     manifest_data = temp_archive.read("manifest.json")
     manifest = DatasetManifest.model_validate_json(manifest_data)
 
-    samples_all = manifest.samples["uni"]
+    samples_0 = manifest.samples["0"]  # this is where the training and validation data comes from
+    samples_1 = manifest.samples["1"]  # this is where the test data comes from
 
     # Create index mappings for each subset
-    train_indices = [i for i, sample in enumerate(samples_all) if sample.x < 40.0 or sample.x >= 60]
-    gap_indices = [i for i, sample in enumerate(samples_all) if sample.x >= 40.0 and sample.x < 60]
-    test_indices = list(range(len(samples_all)))
+    indices_train = [
+        i
+        for i, sample in enumerate(samples_0)
+        if sample.x < config.gap_start_x or sample.x >= config.gap_end_x
+    ]
+    indices_gap = [
+        i
+        for i, sample in enumerate(samples_0)
+        if sample.x >= config.gap_start_x and sample.x < config.gap_end_x
+    ]
+    indices_test = list(range(len(samples_1)))
 
-    # Load all images once
-    with ThreadPoolExecutor(max_workers=64) as executor:
-        images_all = list(
-            executor.map(lambda sample: load_image_into_ndarray(temp_archive, sample.filename), samples_all)
-        )
+    random.shuffle(indices_train)
+    random.shuffle(indices_gap)
+    random.shuffle(indices_test)
 
-    # Reference image subsets using indices
-    images_train = [images_all[i] for i in train_indices]
-    images_gap = [images_all[i] for i in gap_indices]
-    images_test = images_all
-
-    labels_train = [samples_all[i].x for i in train_indices]
-    labels_gap = [samples_all[i].x for i in gap_indices]
-    labels_test = [sample.x for sample in samples_all]
-
-    temp_archive.close()
+    indices_train = indices_train[: len(indices_train)]
+    indices_gap = indices_gap[: len(indices_gap)]
+    indices_test = indices_test[: len(indices_test)]
 
     affine = A.Affine(
         rotate=(-5, 5),
@@ -91,9 +95,38 @@ def run_experiment(config: ExperimentConfig) -> None:
     def just_normalize(image: np.ndarray) -> torch.Tensor:
         return normalize_pipeline(image=image)["image"]
 
-    dataset_train = GlyphDataset(images=images_train, labels=labels_train, transform=affine_and_normalize)
-    dataset_gap = GlyphDataset(images=images_gap, labels=labels_gap, transform=just_normalize)
-    dataset_test = GlyphDataset(images=images_test, labels=labels_test, transform=just_normalize)
+    with ThreadPoolExecutor(max_workers=32) as executor:
+        images_train = list(
+            executor.map(
+                lambda i: affine_and_normalize(load_image_into_ndarray(temp_archive, samples_0[i].filename)),
+                indices_train,
+            )
+        )
+        images_gap = list(
+            executor.map(
+                lambda i: just_normalize(load_image_into_ndarray(temp_archive, samples_0[i].filename)),
+                indices_gap,
+            )
+        )
+        images_test = list(
+            executor.map(
+                lambda i: just_normalize(load_image_into_ndarray(temp_archive, samples_1[i].filename)),
+                indices_test,
+            )
+        )
+        labels_train = list(executor.map(lambda i: samples_0[i].x, indices_train))
+        labels_gap = list(executor.map(lambda i: samples_0[i].x, indices_gap))
+        labels_test = list(executor.map(lambda i: samples_1[i].x, indices_test))
+
+    temp_archive.close()
+
+    dataset_train = GlyphDataset(images=images_train, labels=labels_train)
+    dataset_gap = GlyphDataset(images=images_gap, labels=labels_gap)
+    dataset_test = GlyphDataset(images=images_test, labels=labels_test)
+
+    print(
+        f"DATASET IMAGE COUNT | train={len(images_train)} | gap={len(images_gap)} | test={len(images_test)}"
+    )
 
     device = os.environ["MGML_DEVICE"]
 
@@ -105,7 +138,6 @@ def run_experiment(config: ExperimentConfig) -> None:
         seed=420,
         data_loader_num_workers=config.data_loader_num_workers,
         batch_size=256,
-        quick=False,
         max_epochs=20,
         model_save_path=Path("models/exp1.pt"),
     )
@@ -125,6 +157,8 @@ if __name__ == "__main__":
         max_iterations=10,
         max_augment_rotation_degrees=5,
         max_augment_translation_percent=10,
+        data_loader_num_workers=8,
+        offline=False,
     )
 
     run_experiment(config)

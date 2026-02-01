@@ -55,10 +55,10 @@ def gen_universal_dataset(seed: int, dataset_name: str, samples_per_x: int):
     #     ds.add_sample(square, x, split="uni", metadata={"shape": ManifestSampleShape.SQUARE})
 
     for x in xvalues_triangle_train:
-        ds.add_sample(triangle, x, split="train", metadata={"shape": ManifestSampleShape.TRIANGLE})
+        ds.add_sample(triangle, x, split="0", metadata={"shape": ManifestSampleShape.TRIANGLE})
 
     for x in xvalues_triangle_test:
-        ds.add_sample(triangle, x, split="test", metadata={"shape": ManifestSampleShape.TRIANGLE})
+        ds.add_sample(triangle, x, split="1", metadata={"shape": ManifestSampleShape.TRIANGLE})
 
     # for x in xvalues_circle:
     #     ds.add_sample(circle, x, split="uni", metadata={"shape": ManifestSampleShape.CIRCLE})

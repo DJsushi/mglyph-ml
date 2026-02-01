@@ -5,8 +5,9 @@ import torch
 from clearml import Logger
 from matplotlib import pyplot as plt
 from torch import nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, SubsetRandomSampler
 
+from mglyph_ml.dataset.glyph_dataset import GlyphDataset
 from mglyph_ml.nn.evaluation import evaluate_glyph_regressor
 from mglyph_ml.visualization import visualize_samples
 
@@ -123,30 +124,37 @@ def train_one_epoch(
 
 def training_loop(
     model: nn.Module,
-    data_loader_train: DataLoader,
-    data_loader_gap: DataLoader,
+    dataset_train: GlyphDataset,
+    dataset_gap: GlyphDataset,
     device: str,
     criterion,
     optimizer,
     num_epochs: int,
     logger: Logger | None = None,
+    batch_size: int = 32,
+    data_loader_num_workers: int = 0,
 ) -> tuple[list[float], list[float], list[float], list[float]]:
     """
     Train a model with real-time visualization of training progress.
 
     Args:
         model: The neural network model to train
-        data_loader_train: DataLoader for training data
-        data_loader_test: DataLoader for test/validation data
+        dataset_train: Training dataset
+        dataset_gap: Validation/gap dataset
         device: Device to train on ('cuda' or 'cpu')
         criterion: Loss function
         optimizer: Optimizer for training
-        num_epochs: Maximum number of epochs to train (default: 10)
-        early_stopping_threshold: Stop training if test error drops below this value in x units (default: 0.3)
+        num_epochs: Maximum number of epochs to train
+        logger: ClearML logger for monitoring (optional)
+        batch_size: Batch size for dataloaders
+        data_loader_num_workers: Number of workers for dataloaders
+        generator: Random generator for reproducibility
 
     Returns:
         Tuple of (train_losses, train_errors, test_losses, test_errors) - all as lists
     """
+    generator = torch.manual_seed(69)
+
     losses = []
     errors = []
     test_losses = []
@@ -159,12 +167,31 @@ def training_loop(
     for epoch in range(1, num_epochs + 1):
         epoch_start_time = time.time()
 
+        # Create a new random subset of 10,000 samples for this epoch
+        indices_train = torch.randperm(len(dataset_train), generator=generator)[:10_000].tolist()
+        sampler_train = SubsetRandomSampler(indices_train, generator=generator)
+
+        # Create dataloaders for this epoch
+        data_loader_train = DataLoader(
+            dataset_train,
+            batch_size=batch_size,
+            sampler=sampler_train,
+            num_workers=data_loader_num_workers,
+            pin_memory=True,
+        )
+        data_loader_gap = DataLoader(
+            dataset_gap,
+            batch_size=batch_size,
+            num_workers=data_loader_num_workers,
+            pin_memory=True,
+        )
+
         if logger is not None:
-            fig1 = visualize_samples(plot_title="Training samples", dataset=data_loader_train.dataset)  # type: ignore
+            fig1 = visualize_samples(plot_title="Training samples", data_loader=data_loader_train)
             logger.report_matplotlib_figure(
                 title="Training samples", series="idk", figure=fig1, report_image=True, iteration=epoch
             )
-            fig2 = visualize_samples(plot_title="Test samples", dataset=data_loader_gap.dataset)  # type: ignore
+            fig2 = visualize_samples(plot_title="Test samples", data_loader=data_loader_gap)
             logger.report_matplotlib_figure(
                 title="Test samples", series="idk", figure=fig2, report_image=True, iteration=epoch
             )
