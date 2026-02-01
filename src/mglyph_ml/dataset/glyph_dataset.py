@@ -1,24 +1,10 @@
-import math
-import os
 import random
-import zipfile
-from copy import deepcopy
-from dataclasses import dataclass
-from decimal import Decimal
-from functools import cached_property
-from io import BytesIO
-from pathlib import Path
-from typing import Callable, Literal, Optional, Union
+from typing import Callable
 
-import albumentations as A
-import cv2
 import numpy as np
 import torch
-from PIL import Image
 from torch import Tensor
 from torch.utils.data import Dataset
-
-from mglyph_ml.dataset.manifest import DatasetManifest, ManifestSample
 
 type GlyphSample = tuple[Tensor, Tensor]
 
@@ -32,7 +18,9 @@ class GlyphDataset(Dataset):
         self,
         images: list[np.ndarray],  # (N, C, H, W), uint8
         labels: list[float],  # (N,), float32
-        transform: Callable[[np.ndarray], torch.Tensor],  # Input: (H, W, C) uint8 [0, 255] -> Output: (C, H, W) float32 normalized
+        transform: Callable[
+            [np.ndarray], torch.Tensor
+        ],  # Input: (H, W, C) uint8 [0, 255] -> Output: (C, H, W) float32 normalized
     ):
         assert all(img.dtype == np.uint8 for img in images), "All images must have dtype uint8"
 
@@ -49,18 +37,8 @@ class GlyphDataset(Dataset):
 
         image_tensor = self.__transform(image)
 
-        return image_tensor, torch.tensor(label, dtype=torch.float32)
+        return image_tensor, torch.tensor(label)
 
     def get_random_samples(self, n: int) -> list[GlyphSample]:
         indices = random.sample(range(len(self)), n)
         return [self[index] for index in indices]
-
-    # @cached_property
-    # def glyph_size(self) -> tuple[int, int]:
-    #     """Get the size of glyphs in this dataset."""
-    #     if len(self.__images) == 0:
-    #         raise ValueError("Dataset is empty")
-
-    #     first_image = self.__preloaded_images[0]
-    #     assert isinstance(first_image, np.ndarray)
-    #     return first_image.shape[1], first_image.shape[0]

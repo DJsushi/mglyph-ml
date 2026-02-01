@@ -1,12 +1,24 @@
 import time
+from dataclasses import dataclass
 
 import torch
 from clearml import Logger
+from matplotlib import pyplot as plt
 from torch import nn
 from torch.utils.data import DataLoader
 
 from mglyph_ml.nn.evaluation import evaluate_glyph_regressor
 from mglyph_ml.visualization import visualize_samples
+
+
+@dataclass
+class Timings:
+    data_loading: float
+    h2d: float
+    forward: float
+    backward: float
+    step: float
+    batch_total: float
 
 
 def train_one_epoch(
@@ -15,26 +27,65 @@ def train_one_epoch(
     device: str,
     criterion,  # unfortunately, has no supertype... There's torch.nn.modules._Loss, but it's private
     optimizer,  # same as above
-) -> tuple[float, float]:
+) -> tuple[float, float, Timings]:
     model.train()
     running_loss = 0.0
     running_error = 0.0
     num_batches = 0
+    data_loading_time = 0.0
+    h2d_time = 0.0
+    forward_time = 0.0
+    backward_time = 0.0
+    step_time = 0.0
+    total_batch_time = 0.0
 
+    use_cuda = "cuda" in device and torch.cuda.is_available()
+    h2d_start = h2d_end = fwd_start = fwd_end = bwd_start = bwd_end = step_start = step_end = None
+    if use_cuda:
+        h2d_start = torch.cuda.Event(enable_timing=True)
+        h2d_end = torch.cuda.Event(enable_timing=True)
+        fwd_start = torch.cuda.Event(enable_timing=True)
+        fwd_end = torch.cuda.Event(enable_timing=True)
+        bwd_start = torch.cuda.Event(enable_timing=True)
+        bwd_end = torch.cuda.Event(enable_timing=True)
+        step_start = torch.cuda.Event(enable_timing=True)
+        step_end = torch.cuda.Event(enable_timing=True)
+
+    batch_start = time.time()
     for index, data in enumerate(train_data_loader):
+        # Measure time spent loading/augmenting data
+        data_load_end = time.time()
+        data_loading_time += data_load_end - batch_start
+
         inputs, labels = data
-        inputs = inputs.to(device, non_blocking=True)
-        labels = labels.to(device, non_blocking=True)
-        labels = labels.view(-1, 1)
+        if use_cuda and h2d_start is not None:
+            h2d_start.record()
+        inputs: torch.Tensor = inputs.to(device, non_blocking=True)
+        labels: torch.Tensor = labels.to(device, non_blocking=True)
+        if use_cuda and h2d_end is not None:
+            h2d_end.record()
+        # Use FP32 for compute stability (prevents NaNs from pure FP16 training)
+        inputs = inputs.float()
+        labels = labels.float().view(-1, 1)
 
         optimizer.zero_grad()
-        outputs = model(inputs)
-        loss = criterion(outputs, labels)
+        if use_cuda and fwd_start is not None:
+            fwd_start.record()
+        outputs: torch.Tensor = model(inputs)
+        loss = criterion(outputs.float(), labels.float())
+        if use_cuda and fwd_end is not None and bwd_start is not None:
+            fwd_end.record()
+            bwd_start.record()
         loss.backward()
+        if use_cuda and bwd_end is not None and step_start is not None:
+            bwd_end.record()
+            step_start.record()
         optimizer.step()
+        if use_cuda and step_end is not None:
+            step_end.record()
 
         # Calculate accuracy as the average absolute difference (y_hat - y)
-        error = torch.mean(torch.abs(outputs - labels)).item()
+        error = torch.mean(torch.abs(outputs.float() - labels.float())).item()
 
         running_loss += loss.item()
         running_error += error
@@ -43,9 +94,31 @@ def train_one_epoch(
         # if (i + 1) % 10 == 0:
         # print(f"[Epoch {epoch+1}, Batch {i+1}] loss: {loss.item():.4f}")
 
+        if use_cuda:
+            torch.cuda.synchronize()
+            if h2d_start is not None and h2d_end is not None:
+                h2d_time += h2d_start.elapsed_time(h2d_end) / 1000.0
+            if fwd_start is not None and fwd_end is not None:
+                forward_time += fwd_start.elapsed_time(fwd_end) / 1000.0
+            if bwd_start is not None and bwd_end is not None:
+                backward_time += bwd_start.elapsed_time(bwd_end) / 1000.0
+            if step_start is not None and step_end is not None:
+                step_time += step_start.elapsed_time(step_end) / 1000.0
+
+        total_batch_time += time.time() - batch_start
+        batch_start = time.time()
+
     avg_loss = running_loss / num_batches if num_batches > 0 else 0.0
     avg_error = running_error / num_batches if num_batches > 0 else 0.0
-    return avg_loss, avg_error
+    timing = Timings(
+        data_loading=data_loading_time,
+        h2d=h2d_time,
+        forward=forward_time,
+        backward=backward_time,
+        step=step_time,
+        batch_total=total_batch_time,
+    )
+    return avg_loss, avg_error, timing
 
 
 def training_loop(
@@ -95,8 +168,11 @@ def training_loop(
             logger.report_matplotlib_figure(
                 title="Test samples", series="idk", figure=fig2, report_image=True, iteration=epoch
             )
+            plt.close()
 
-        loss_train, error_train = train_one_epoch(model, data_loader_train, device, criterion, optimizer)
+        loss_train, error_train, timing = train_one_epoch(
+            model, data_loader_train, device, criterion, optimizer
+        )
         losses.append(loss_train)
         errors.append(error_train)
 
@@ -110,7 +186,10 @@ def training_loop(
         error_x_gap = error_gap * 100.0
         print(
             f"Epoch {epoch}/{num_epochs} - Train (x units): {error_x_train:.2f} | "
-            f"Gap (x units): {error_x_gap:.2f} | Time: {epoch_time:.1f}s"
+            f"Gap (x units): {error_x_gap:.2f} | Time: {epoch_time:.1f}s | "
+            f"Data load(total): {timing.data_loading:.1f}s | H2D(total): {timing.h2d:.1f}s | "
+            f"Fwd(total): {timing.forward:.1f}s | Bwd(total): {timing.backward:.1f}s | "
+            f"Step(total): {timing.step:.1f}s | Batch(total): {timing.batch_total:.1f}s"
         )
 
         if logger is not None:

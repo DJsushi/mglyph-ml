@@ -49,21 +49,18 @@ def train_and_test_model(
         generator=generator,
         num_workers=data_loader_num_workers,
         pin_memory=True,
-        persistent_workers=True,  # Keep workers alive between epochs
     )
     data_loader_gap = DataLoader(
         dataset_gap,
         batch_size=batch_size,
         num_workers=data_loader_num_workers,
         pin_memory=True,
-        persistent_workers=True,
     )
     data_loader_test = DataLoader(
         dataset_test,
         batch_size=batch_size,
         num_workers=data_loader_num_workers,
         pin_memory=True,
-        persistent_workers=True,
     )
 
     model = GlyphRegressor()

@@ -1,59 +1,37 @@
 """
 The experiment overwatcher is just a script that watches over the creation of different experiments.
-It simply runs experiment tasks one by one as subprocesses.
+It runs the same experiment with different numbers of workers to benchmark performance.
 """
 
-import subprocess
 import sys
-from dataclasses import dataclass
+from pathlib import Path
 
-import numpy as np
+from mglyph_ml.experiment.e1.experiment import ExperimentConfig, run_experiment
 
+# Run the same experiment with different numbers of workers
+worker_counts = [8, 16, 32, 40, 48]
 
-@dataclass
-class ParameterSet:
-    start_x: float
-    end_x: float
-    max_iterations: float
+for i, num_workers in enumerate(worker_counts):
+    print(f"\nRunning experiment {i + 1}/{len(worker_counts)} with num_workers={num_workers}")
 
+    config = ExperimentConfig(
+        task_name=f"Experiment 1 - num_workers={num_workers}",
+        task_tag="exp-1-workers-benchmark",
+        dataset_path=Path("data/uni.mglyph"),
+        gap_start_x=30.0,
+        gap_end_x=70.0,
+        quick=False,
+        seed=420,
+        max_iterations=3,
+        data_loader_num_workers=num_workers,
+        offline=False,
+    )
 
-parameter_sets: list[ParameterSet] = []
-
-# Generate parameter sets with varying gap sizes
-for gap_size in range(10, 100, 10):
-    for start in range(0, 101 - gap_size, 10):
-        end = start + gap_size
-        parameter_sets.append(ParameterSet(start_x=float(start), end_x=float(end), max_iterations=20))
-
-print(parameter_sets)
-
-# Run an experiment for each parameter set
-for i, params in enumerate(parameter_sets):
-    print(f"\nRunning experiment with parameter set {i + 1}/{len(parameter_sets)}")
-
-    task_name = f"EXP 1.1.3: s={params.start_x}; e={params.end_x}; i=20"
-
-    cmd = [
-        sys.executable,
-        "experiments/e1/experiment.py",
-        task_name,
-        "--start-x",
-        str(params.start_x),
-        "--end-x",
-        str(params.end_x),
-        "--max-iterations",
-        str(params.max_iterations),
-        "--no-quick",
-        "--seed",
-        "420",
-        "--task-tag",
-        "experiment-1.1.3",
-    ]
-
-    result = subprocess.run(cmd, check=True)
-
-    if result.returncode != 0:
-        print(f"Experiment {i + 1} failed with return code {result.returncode}")
+    try:
+        run_experiment(config)
+        print(f"Experiment with num_workers={num_workers} completed successfully!")
+    except Exception as e:
+        print(f"Experiment with num_workers={num_workers} failed with error: {e}")
         sys.exit(1)
 
 print("\nAll experiments completed successfully!")

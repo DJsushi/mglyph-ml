@@ -30,6 +30,7 @@ class ExperimentConfig:
     max_iterations: int = 2
     max_augment_rotation_degrees: float = 5.0
     max_augment_translation_percent: float = 0.05
+    data_loader_num_workers: int = 32
     offline: bool = False
 
 
@@ -102,8 +103,8 @@ def run_experiment(config: ExperimentConfig) -> None:
         dataset_gap=dataset_gap,
         dataset_test=dataset_test,
         seed=420,
-        data_loader_num_workers=32,
-        batch_size=128,
+        data_loader_num_workers=config.data_loader_num_workers,
+        batch_size=256,
         quick=False,
         max_epochs=20,
         model_save_path=Path("models/exp1.pt"),
