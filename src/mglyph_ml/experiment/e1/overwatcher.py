@@ -6,7 +6,11 @@ It runs the same experiment with different numbers of workers to benchmark perfo
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from mglyph_ml.experiment.e1.experiment import ExperimentConfig, run_experiment
+
+load_dotenv()
 
 # Run the same experiment with different numbers of workers
 worker_counts = [8, 16, 32, 40, 48]

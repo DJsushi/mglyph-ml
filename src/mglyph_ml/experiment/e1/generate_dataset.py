@@ -31,7 +31,7 @@ def gen_universal_dataset(seed: int, dataset_name: str, samples_per_x: int):
 
     def triangle(x: float, canvas: mg.Canvas):
         canvas.tr.scale(mg.lerp(x, 0.05, 0.95))
-        canvas.polygon([canvas.bottom_left, canvas.bottom_right, canvas.top_center], color="cyan")
+        canvas.polygon([canvas.bottom_left, canvas.bottom_right, canvas.top_center], color="gray")
 
     def circle(x: float, canvas: mg.Canvas):
         canvas.tr.scale(mg.lerp(x, 0.05, 0.95))
@@ -41,21 +41,27 @@ def gen_universal_dataset(seed: int, dataset_name: str, samples_per_x: int):
 
     total_samples_shape = samples_per_x * 100
 
-    xvalues_square = np_gen.uniform(0.0, 100.0, total_samples_shape)
-    xvalues_triangle = np_gen.uniform(0.0, 100.0, total_samples_shape)
-    xvalues_circle = np_gen.uniform(0.0, 100.0, total_samples_shape)
-    xvalues_square.sort()
-    xvalues_triangle.sort()
-    xvalues_circle.sort()
+    # xvalues_square = np_gen.uniform(0.0, 100.0, total_samples_shape)
+    xvalues_triangle_train = np_gen.uniform(0.0, 100.0, total_samples_shape)
+    # xvalues_circle = np_gen.uniform(0.0, 100.0, total_samples_shape)
+    # xvalues_square.sort()
+    xvalues_triangle_train.sort()
+    # xvalues_circle.sort()
 
-    for x in xvalues_square:
-        ds.add_sample(square, x, split="uni", metadata={"shape": ManifestSampleShape.SQUARE})
+    xvalues_triangle_test = np_gen.uniform(0.0, 100.0, total_samples_shape)
+    xvalues_triangle_test.sort()
 
-    for x in xvalues_triangle:
-        ds.add_sample(triangle, x, split="uni", metadata={"shape": ManifestSampleShape.TRIANGLE})
+    # for x in xvalues_square:
+    #     ds.add_sample(square, x, split="uni", metadata={"shape": ManifestSampleShape.SQUARE})
 
-    for x in xvalues_circle:
-        ds.add_sample(circle, x, split="uni", metadata={"shape": ManifestSampleShape.CIRCLE})
+    for x in xvalues_triangle_train:
+        ds.add_sample(triangle, x, split="train", metadata={"shape": ManifestSampleShape.TRIANGLE})
+
+    for x in xvalues_triangle_test:
+        ds.add_sample(triangle, x, split="test", metadata={"shape": ManifestSampleShape.TRIANGLE})
+
+    # for x in xvalues_circle:
+    #     ds.add_sample(circle, x, split="uni", metadata={"shape": ManifestSampleShape.CIRCLE})
 
     ds.export(path)
 
@@ -81,7 +87,7 @@ def main():
         samples_per_x=args.samples_per_x,
     )
     print(f"Dataset generated at: {dataset_path}")
-    print(f"Reuse this dataset by passing: --dataset-path {dataset_path}")
+    print(f"Reuse this dataset by passing: --dataset-name {dataset_path}")
 
 
 if __name__ == "__main__":
