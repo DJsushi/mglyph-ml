@@ -122,7 +122,10 @@ def visualize_samples(
     axes = np.array(axes).reshape(-1)  # Flatten for easy indexing
 
     for index, sample_idx in enumerate(sample_indices):
-        image, label = list(data_loader)[sample_idx]
+        # get the first batch and hope it's of size at least 9
+        images_batch, labels_batch = list(data_loader)[0]
+        image = images_batch[sample_idx]
+        label = labels_batch[sample_idx]
 
         # Convert image for display
         img = image.numpy().clip(0, 1).transpose(1, 2, 0)  # [C, H, W] -> [H, W, C]

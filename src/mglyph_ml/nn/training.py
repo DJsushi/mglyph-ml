@@ -186,16 +186,16 @@ def training_loop(
             pin_memory=True,
         )
 
-        if logger is not None:
-            fig1 = visualize_samples(plot_title="Training samples", data_loader=data_loader_train)
-            logger.report_matplotlib_figure(
-                title="Training samples", series="idk", figure=fig1, report_image=True, iteration=epoch
-            )
-            fig2 = visualize_samples(plot_title="Test samples", data_loader=data_loader_gap)
-            logger.report_matplotlib_figure(
-                title="Test samples", series="idk", figure=fig2, report_image=True, iteration=epoch
-            )
-            plt.close()
+        # if logger is not None:
+            # fig1 = visualize_samples(plot_title="Training samples", data_loader=data_loader_train)
+            # logger.report_matplotlib_figure(
+            #     title="Training samples", series="idk", figure=fig1, report_image=True, iteration=epoch
+            # )
+            # fig2 = visualize_samples(plot_title="Test samples", data_loader=data_loader_gap)
+            # logger.report_matplotlib_figure(
+            #     title="Test samples", series="idk", figure=fig2, report_image=True, iteration=epoch
+            # )
+            # plt.close()
 
         loss_train, error_train, timing = train_one_epoch(
             model, data_loader_train, device, criterion, optimizer
