@@ -130,17 +130,20 @@ def run_experiment(config: ExperimentConfig) -> None:
 
     device = os.environ["MGML_DEVICE"]
 
-    train_and_test_model(
-        device=device,
-        dataset_train=dataset_train,
-        dataset_gap=dataset_gap,
-        dataset_test=dataset_test,
-        seed=420,
-        data_loader_num_workers=config.data_loader_num_workers,
-        batch_size=256,
-        max_epochs=20,
-        model_save_path=Path("models/exp1.pt"),
-    )
+    try:
+        train_and_test_model(
+            device=device,
+            dataset_train=dataset_train,
+            dataset_gap=dataset_gap,
+            dataset_test=dataset_test,
+            seed=420,
+            data_loader_num_workers=config.data_loader_num_workers,
+            batch_size=256,
+            max_epochs=config.max_iterations,
+            model_save_path=Path("models/exp1.pt"),
+        )
+    finally:
+        task.close()
 
 
 if __name__ == "__main__":
