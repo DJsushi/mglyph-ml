@@ -3,6 +3,7 @@ from typing import Callable
 
 import numpy as np
 import torch
+from PIL import Image
 from torch import Tensor
 from torch.utils.data import Dataset
 
@@ -16,15 +17,13 @@ class GlyphDataset(Dataset):
 
     def __init__(
         self,
-        images: list[torch.Tensor],  # (N, C, H, W), uint8
-        labels: list[float],  # (N,), float32
-        # transform: Callable[
-        #     [np.ndarray], torch.Tensor
-        # ] | None,  # Input: (H, W, C) uint8 [0, 255] -> Output: (C, H, W) float32 normalized
+        images: list[np.ndarray],  # PIL images
+        labels: list[float],
+        transform: Callable[[np.ndarray], torch.Tensor] | None = None,
     ):
         self.__images = images
         self.__labels = [label / 100.0 for label in labels]
-        # self.__transform = transform
+        self.__transform = transform
 
     def __len__(self) -> int:
         return len(self.__images)
@@ -33,12 +32,12 @@ class GlyphDataset(Dataset):
         image = self.__images[index]
         label = self.__labels[index]
 
-        # if self.__transform is None:
-        #     image_tensor = image
-        # else:
-        #     image_tensor = self.__transform(image)
+        if self.__transform is not None:
+            image_tensor = self.__transform(image)
+        else:
+            image_tensor = torch.tensor(np.array(image)).permute(2, 0, 1).float() / 255.0
 
-        return image, torch.tensor(label)
+        return image_tensor, torch.tensor(label)
 
     def get_random_samples(self, n: int) -> list[GlyphSample]:
         indices = random.sample(range(len(self)), n)
