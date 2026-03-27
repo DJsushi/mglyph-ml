@@ -2,7 +2,7 @@ from torch import nn
 
 
 class GlyphRegressor(nn.Module):
-    def __init__(self):
+    def __init__(self, image_resolution: tuple[int, int] = (64, 64)):
         super().__init__()
 
         self.features = nn.Sequential(
@@ -14,9 +14,18 @@ class GlyphRegressor(nn.Module):
             nn.MaxPool2d(2),
             nn.Conv2d(32, 64, 3, padding=1),
             nn.ReLU(),
-            nn.AdaptiveAvgPool2d((4, 4)),
+            # nn.AdaptiveAvgPool2d((4, 4)),
         )
-        self.regressor = nn.Sequential(nn.Flatten(), nn.Linear(64 * 4 * 4, 64), nn.ReLU(), nn.Linear(64, 1))
+        subsample_factor = (4, 4)
+        self.regressor = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(
+                64 * image_resolution[0] // subsample_factor[0] * image_resolution[1] // subsample_factor[1],
+                64,
+            ),
+            nn.ReLU(),
+            nn.Linear(64, 1),
+        )
 
     def forward(self, x):
         x = self.features(x)

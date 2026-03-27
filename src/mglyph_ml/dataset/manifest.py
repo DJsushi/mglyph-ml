@@ -10,15 +10,12 @@ class ManifestSample(BaseModel):
     metadata: dict
 
 
-T = TypeVar("T", bound=ManifestSample)
-
-
-class DatasetManifest(BaseModel, Generic[T]):
+class DatasetManifest(BaseModel):
     model_config = ConfigDict(strict=True)
 
     name: str
     creation_time: datetime.datetime
-    samples: dict[str, list[T]]
+    samples: dict[str, list[ManifestSample]]
 
     @staticmethod
     def get_sample_filename(id: float) -> str:
