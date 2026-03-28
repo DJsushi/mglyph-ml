@@ -38,6 +38,7 @@ def load_images_and_labels(
     a desired size of the loaded images, for faster training. The `indices_filter` function is used to specify
     a predicate that filters out unwanted indices.
     """
+    assert not (seed is not None and shuffle == False)
 
     if indices_filter is None:
         indices_filter = lambda _: True
