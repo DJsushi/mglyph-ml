@@ -17,10 +17,12 @@ class GlyphDataset(Dataset):
 
     def __init__(
         self,
+        name: str,
         images: list[np.ndarray],  # PIL images
         labels: list[float],
         transform: Callable[[np.ndarray], torch.Tensor] | None = None,
     ):
+        self.name = name
         self.__images = images
         self.__labels = [label / 100.0 for label in labels]
         self.__transform = transform

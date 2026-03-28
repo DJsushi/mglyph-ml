@@ -8,8 +8,10 @@ from zipfile import ZipFile
 import logging
 
 import cv2
+from matplotlib import pyplot as plt
 import numpy as np
 
+from mglyph_ml.dataset.glyph_dataset import GlyphDataset
 from mglyph_ml.dataset.manifest import DatasetManifest
 
 
@@ -96,3 +98,28 @@ def load_images_and_labels(
     labels = [sample.x for sample in samples]
 
     return LoadedImagesAndLabels(images, labels)
+
+
+def show_datasets(*datasets: GlyphDataset, n_samples: int = 6) -> None:
+    assert len(datasets) >= 1
+
+    _, axes = plt.subplots(len(datasets), n_samples, figsize=(2 * n_samples, 2 * len(datasets) + 1))
+    axes = np.atleast_2d(axes)
+
+    for row, dataset in enumerate(datasets):
+        dataset_name = getattr(dataset, "name", f"Dataset {row + 1}")
+
+        for i in range(n_samples):
+            idx = i * len(dataset) // n_samples + len(dataset) // n_samples // 2
+            img_tensor, label = dataset[idx]
+            img = img_tensor.permute(1, 2, 0).numpy()
+
+            axes[row, i].imshow(img)
+            axes[row, i].set_title(f"{label * 100.0:.3f}")
+            axes[row, i].set_xticks([])
+            axes[row, i].set_yticks([])
+
+        axes[row, 0].set_ylabel(dataset_name, rotation=90, fontsize=11, labelpad=12)
+
+    plt.tight_layout()
+    plt.show()
