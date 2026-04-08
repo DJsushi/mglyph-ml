@@ -115,7 +115,7 @@ def show_datasets(*datasets: GlyphDataset, n_samples: int = 6) -> None:
             img = img_tensor.permute(1, 2, 0).numpy()
 
             axes[row, i].imshow(img)
-            axes[row, i].set_title(f"{label * 100.0:.3f}")
+            axes[row, i].set_title(f"{label:.3f}")
             axes[row, i].set_xticks([])
             axes[row, i].set_yticks([])
 

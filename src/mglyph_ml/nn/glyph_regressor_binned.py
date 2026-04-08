@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Literal, cast
 
 import torch
 from torch import nn
@@ -12,42 +12,30 @@ class BinnedGlyphRegressor(nn.Module):
     done in x-space and converted back to normalized space when needed.
     """
 
-    def __init__(
-        self,
-        image_resolution: tuple[int, int] = (64, 64),
-        bin_size_x: float = 1.0,
-        x_min: float = 0.0,
-        x_max: float = 100.0,
-    ):
+    def __init__(self, image_resolution: tuple[int, int] = (64, 64), num_divisions: int = 5):
         super().__init__()
 
-        if bin_size_x <= 0:
-            raise ValueError("bin_size_x must be > 0")
-        if x_max <= x_min:
-            raise ValueError("x_max must be greater than x_min")
+        if num_divisions <= 0:
+            raise ValueError("num_bins must be > 0")
         if image_resolution[0] <= 0 or image_resolution[1] <= 0:
             raise ValueError("image_resolution values must be > 0")
 
-        # Include both ends (for 0..100 with size 1 -> 101 bins).
-        span = x_max - x_min
-        self.bin_size_x = float(bin_size_x)
-        self.x_min = float(x_min)
-        self.x_max = float(x_max)
-        self.num_bins = int(round(span / self.bin_size_x)) + 1
+        self.num_bins = num_divisions + 3
+        self.bin_size_x = 100.0 / self.num_bins
         self.image_resolution = image_resolution
 
         self.features = nn.Sequential(
             nn.Conv2d(3, 32, kernel_size=3, padding=1),
             nn.Conv2d(32, 32, kernel_size=3, padding=1),
-            nn.ReLU(),
+            nn.ReLU(inplace=True),
             nn.MaxPool2d(2),
             nn.Conv2d(32, 64, kernel_size=3, padding=1),
             nn.Conv2d(64, 64, kernel_size=3, padding=1),
-            nn.ReLU(),
+            nn.ReLU(inplace=True),
             nn.MaxPool2d(2),
             nn.Conv2d(64, 128, kernel_size=3, padding=1),
             nn.Conv2d(128, 128, kernel_size=3, padding=1),
-            nn.ReLU(),
+            nn.ReLU(inplace=True),
             nn.MaxPool2d(2),
         )
 
@@ -62,7 +50,10 @@ class BinnedGlyphRegressor(nn.Module):
             nn.Linear(256, self.num_bins),
         )
 
-        bin_centers_x = torch.linspace(self.x_min, self.x_max, steps=self.num_bins)
+        # Use true bin midpoints so centers align with labels_to_bins binning.
+        bin_center_distance = 100 / num_divisions
+        centroid_count = num_divisions + 3
+        bin_centers_x = torch.linspace(-bin_center_distance, 100 + bin_center_distance, centroid_count)
         self.register_buffer("bin_centers_x", bin_centers_x)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -70,34 +61,16 @@ class BinnedGlyphRegressor(nn.Module):
         logits = self.classifier(x)
         return logits
 
-    def labels_to_bins(self, labels_normalized: torch.Tensor) -> torch.Tensor:
-        """Convert normalized labels in [0, 1] to class indices for CE loss."""
-        labels_x = labels_normalized.float() * 100.0
-        bin_indices = torch.round((labels_x - self.x_min) / self.bin_size_x).long()
+    def labels_to_bins(self, labels: torch.Tensor) -> torch.Tensor:
+        """Convert labels in [0, 100] to class indices for CE loss."""
+        bin_indices = torch.floor(labels / self.bin_size_x).long()
+        # we gotta clamp here just to make sure rounding errors at label=100.0 don't mess something up
         return torch.clamp(bin_indices, 0, self.num_bins - 1)
 
-    def bins_to_labels(self, bin_indices: torch.Tensor) -> torch.Tensor:
-        """Convert predicted class indices back to normalized labels in [0, 1]."""
-        clamped = torch.clamp(bin_indices.long(), 0, self.num_bins - 1)
+    def logits_to_labels(self, logits: torch.Tensor) -> torch.Tensor:
+        """
+        Convert logits to regression output in [0, 100].
+        """
         bin_centers_x = cast(torch.Tensor, self.bin_centers_x)
-        pred_x = bin_centers_x[clamped]
-        return pred_x / 100.0
-
-    def logits_to_labels(self, logits: torch.Tensor, strategy: str = "argmax") -> torch.Tensor:
-        """
-        Convert logits to normalized regression output in [0, 1].
-
-        strategy='argmax': nearest bin center
-        strategy='expectation': probability-weighted average over bin centers
-        """
-        if strategy == "argmax":
-            pred_bins = torch.argmax(logits, dim=1)
-            return self.bins_to_labels(pred_bins)
-
-        if strategy == "expectation":
-            probs = torch.softmax(logits, dim=1)
-            bin_centers_x = cast(torch.Tensor, self.bin_centers_x)
-            pred_x = probs @ bin_centers_x
-            return pred_x / 100.0
-
-        raise ValueError(f"Unknown strategy: {strategy}")
+        probs = torch.softmax(logits, dim=1)
+        return torch.sum(probs * bin_centers_x, dim=1)

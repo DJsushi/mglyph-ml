@@ -24,7 +24,8 @@ class GlyphDataset(Dataset):
     ):
         self.name = name
         self.__images = images
-        self.__labels = [label / 100.0 for label in labels]
+        # self.__labels = [label / 100.0 for label in labels]
+        self.__labels = labels  # we don't normalize the labels because there's just 1 output for the regression
         self.__transform = transform
 
     def __len__(self) -> int:
