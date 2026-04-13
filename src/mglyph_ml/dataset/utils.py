@@ -16,16 +16,11 @@ from mglyph_ml.dataset.manifest import DatasetManifest
 
 
 @dataclass
-class LoadedSamples:
-    images: list
-    labels: list[float]
-    metadatas: list[dict]
-
-    def __iter__(self):
-        return iter((self.images, self.labels, self.metadatas))
-
-    def __getitem__(self, index: int):
-        return self.images[index], self.labels[index], self.metadatas[index]
+class LoadedSample:
+    imid: str
+    image: np.ndarray
+    label: float
+    metadata: dict
 
 
 def load_split_samples(
@@ -35,7 +30,7 @@ def load_split_samples(
     shuffle: bool = False,
     seed: int | None = None,
     desired_size: int | tuple[int, int] | None = None,
-) -> LoadedSamples:
+) -> list[LoadedSample]:
     """
     Loads all the images and labels from the dataset from a certain specified split. It also supports specifying
     a desired size of the loaded images, for faster training. The `indices_filter` function is used to specify
@@ -96,10 +91,17 @@ def load_split_samples(
 
     temp_archive.close()
 
-    labels = [sample.x for sample in samples]
-    metadatas = [sample.metadata for sample in samples]
+    loaded_samples = [
+        LoadedSample(
+            imid=sample.filename,
+            image=image,
+            label=sample.x,
+            metadata=sample.metadata,
+        )
+        for sample, image in zip(samples, images)
+    ]
 
-    return LoadedSamples(images, labels, metadatas)
+    return loaded_samples
 
 
 def show_datasets(*datasets: GlyphDataset, n_samples: int = 6) -> None:
