@@ -1,40 +1,41 @@
+import logging
+import random
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
-import random
 from typing import Callable
 from zipfile import ZipFile
-import logging
 
 import cv2
-from matplotlib import pyplot as plt
 import numpy as np
+from matplotlib import pyplot as plt
 
 from mglyph_ml.dataset.glyph_dataset import GlyphDataset
 from mglyph_ml.dataset.manifest import DatasetManifest
 
 
 @dataclass
-class LoadedImagesAndLabels:
+class LoadedSamples:
     images: list
     labels: list[float]
+    metadatas: list[dict]
 
     def __iter__(self):
-        return iter((self.images, self.labels))
+        return iter((self.images, self.labels, self.metadatas))
 
     def __getitem__(self, index: int):
-        return self.images[index], self.labels[index]
+        return self.images[index], self.labels[index], self.metadatas[index]
 
 
-def load_images_and_labels(
+def load_split_samples(
     dataset_path: Path,
     split: str,
     indices_filter: Callable[[int], bool] | None = None,
     shuffle: bool = False,
     seed: int | None = None,
     desired_size: int | tuple[int, int] | None = None,
-) -> LoadedImagesAndLabels:
+) -> LoadedSamples:
     """
     Loads all the images and labels from the dataset from a certain specified split. It also supports specifying
     a desired size of the loaded images, for faster training. The `indices_filter` function is used to specify
@@ -96,11 +97,16 @@ def load_images_and_labels(
     temp_archive.close()
 
     labels = [sample.x for sample in samples]
+    metadatas = [sample.metadata for sample in samples]
 
-    return LoadedImagesAndLabels(images, labels)
+    return LoadedSamples(images, labels, metadatas)
 
 
 def show_datasets(*datasets: GlyphDataset, n_samples: int = 6) -> None:
+    """
+    Given any amount of GlyphDatasets, it draws a plot containing `n_samples` samples from each
+    of the datasets.
+    """
     assert len(datasets) >= 1
 
     _, axes = plt.subplots(len(datasets), n_samples, figsize=(2 * n_samples, 2 * len(datasets) + 1))
