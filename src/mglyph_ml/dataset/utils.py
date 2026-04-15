@@ -104,12 +104,20 @@ def load_split_samples(
     return loaded_samples
 
 
-def show_datasets(*datasets: GlyphDataset, n_samples: int = 6) -> None:
+def show_datasets(
+    *datasets: GlyphDataset,
+    n_samples: int = 6,
+    x_range: tuple[float, float] = (0.0, 100.0),
+) -> None:
     """
     Given any amount of GlyphDatasets, it draws a plot containing `n_samples` samples from each
-    of the datasets.
+    of the datasets. If `x_range` is provided, only samples whose labels fall inside the range are shown.
     """
     assert len(datasets) >= 1
+
+    x_min, x_max = x_range
+    if x_min > x_max:
+        raise ValueError("x_range must be ordered as (min, max)")
 
     _, axes = plt.subplots(len(datasets), n_samples, figsize=(2 * n_samples, 2 * len(datasets) + 1))
     axes = np.atleast_2d(axes)
@@ -117,13 +125,32 @@ def show_datasets(*datasets: GlyphDataset, n_samples: int = 6) -> None:
     for row, dataset in enumerate(datasets):
         dataset_name = getattr(dataset, "name", f"Dataset {row + 1}")
 
+        indices_in_range = [
+            index
+            for index in range(len(dataset))
+            if x_min <= float(dataset[index][1]) <= x_max
+        ]
+
+        if not indices_in_range:
+            raise ValueError(f"No samples from {dataset_name} fall within x_range={x_range}")
+
+        if len(indices_in_range) >= n_samples:
+            sample_positions = np.linspace(0, len(indices_in_range) - 1, n_samples, dtype=int)
+            selected_indices = [indices_in_range[position] for position in sample_positions]
+        else:
+            selected_indices = indices_in_range
+
         for i in range(n_samples):
-            idx = i * len(dataset) // n_samples + len(dataset) // n_samples // 2
-            img_tensor, label = dataset[idx]
+            if i < len(selected_indices):
+                img_tensor, label = dataset[selected_indices[i]]
+            else:
+                axes[row, i].axis("off")
+                continue
+
             img = img_tensor.permute(1, 2, 0).numpy()
 
             axes[row, i].imshow(img)
-            axes[row, i].set_title(f"{label:.3f}")
+            axes[row, i].set_title(f"{label:.5f}")
             axes[row, i].set_xticks([])
             axes[row, i].set_yticks([])
 
