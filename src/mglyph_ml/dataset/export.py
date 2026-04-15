@@ -4,14 +4,16 @@ Logic for dataset creation and exporting.
 
 import dataclasses
 import json
-from pathlib import Path
+import random
 import sys
 import zipfile
 from datetime import datetime
 from decimal import Decimal
 from io import BytesIO
+from pathlib import Path
 from typing import Callable, Optional
 
+import numpy as np
 from mglyph import Canvas, CanvasParameters, render
 
 from mglyph_ml.dataset.manifest import DatasetManifest, ManifestSample
@@ -47,9 +49,7 @@ class _DatasetBuilder:
     def export(
         self,
         path: Path,
-        canvas_parameters: CanvasParameters = CanvasParameters(
-            canvas_round_corner=False
-        ),
+        canvas_parameters: CanvasParameters = CanvasParameters(canvas_round_corner=False),
     ) -> Optional[BytesIO]:
         global_id = 0
         order = len(str(len(self._samples) - 1))
@@ -57,14 +57,14 @@ class _DatasetBuilder:
         # Group samples by split
         samples_by_split: dict[str, list[ManifestSample]] = {}
         all_manifest_samples = []
-        
+
         for sample in self._samples:
             manifest_sample = ManifestSample(
                 x=sample.x,
                 filename=f"{global_id:0{order}d}.png",
                 metadata=sample.metadata,
             )
-            
+
             if sample.split not in samples_by_split:
                 samples_by_split[sample.split] = []
             samples_by_split[sample.split].append(manifest_sample)
@@ -101,7 +101,39 @@ class _DatasetBuilder:
             return zip_buffer
 
 
-def create_dataset(
-    name: str, creation_time: datetime = datetime.now()
-) -> _DatasetBuilder:
+def create_dataset(name: str, creation_time: datetime = datetime.now()) -> _DatasetBuilder:
     return _DatasetBuilder(name=name, creation_time=creation_time)
+
+
+def export_dataset(
+    name: str, path: Path, drawer: Drawer, seed: int | None = None, n_samples: int = 10_000
+) -> None:
+    # Ensure the output directory exists
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Remove existing file so generation is always fresh and deterministic.
+    if path.exists():
+        path.unlink()
+        print(f"Removed existing {path}")
+
+    np_gen = np.random.default_rng(seed)
+    random.seed(seed)
+
+    dataset = create_dataset(name=name)
+
+    xvalues_train = np_gen.uniform(0.0, 100.0, n_samples)
+    xvalues_train = np.append(xvalues_train, [0.0, 100.0])
+    xvalues_train.sort()
+
+    xvalues_test = np_gen.uniform(0.0, 100.0, 2000)
+    xvalues_test = np.append(xvalues_test, [0.0, 100.0])
+    xvalues_test.sort()
+
+    for x in xvalues_train:
+        dataset.add_sample(drawer, x, split="0")
+
+    for x in xvalues_test:
+        dataset.add_sample(drawer, x, split="1")
+
+    dataset.export(path)
+    print(f"Generated: {path}")
