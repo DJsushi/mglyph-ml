@@ -54,6 +54,7 @@ class BinnedGlyphRegressor(nn.Module):
         bin_center_distance = 100 / num_divisions
         centroid_count = num_divisions + 3
         bin_centers_x = torch.linspace(-bin_center_distance, 100 + bin_center_distance, centroid_count)
+        # bin_centers_x = torch.linspace(0, 100, centroid_count)
         self.register_buffer("bin_centers_x", bin_centers_x)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -73,4 +74,4 @@ class BinnedGlyphRegressor(nn.Module):
         """
         bin_centers_x = cast(torch.Tensor, self.bin_centers_x)
         probs = torch.softmax(logits, dim=1)
-        return torch.sum(probs * bin_centers_x, dim=1)
+        return torch.clamp(torch.sum(probs * bin_centers_x, dim=1), 0.0, 100.0)

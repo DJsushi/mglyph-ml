@@ -121,11 +121,12 @@ def export_dataset(
 
     dataset = create_dataset(name=name)
 
-    xvalues_train = np_gen.uniform(0.0, 100.0, n_samples)
+    # we subtract 2 because we manually add 2 extra samples (0.0 and 100.0)
+    xvalues_train = np_gen.uniform(0.0, 100.0, n_samples - 2)
     xvalues_train = np.append(xvalues_train, [0.0, 100.0])
     xvalues_train.sort()
 
-    xvalues_test = np_gen.uniform(0.0, 100.0, 2000)
+    xvalues_test = np_gen.uniform(0.0, 100.0, n_samples - 2)
     xvalues_test = np.append(xvalues_test, [0.0, 100.0])
     xvalues_test.sort()
 

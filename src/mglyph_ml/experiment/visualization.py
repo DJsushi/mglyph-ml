@@ -6,11 +6,11 @@ from matplotlib import pyplot as plt
 
 
 def show_truth_vs_pred_graph(
+    title: str,
     n_samples: int,
     model,
     dataset,
     device: str,
-    seed: int | None = None,
     ax=None,
 ):
     """Plot ground-truth vs predicted x and return (fig, ax).
@@ -22,8 +22,7 @@ def show_truth_vs_pred_graph(
     if n_samples <= 0:
         raise ValueError("n_samples must be > 0")
 
-    rng = random.Random(seed) if seed is not None else random
-    sample_indices = rng.sample(range(len(dataset)), n_samples)
+    sample_indices = random.sample(range(len(dataset)), n_samples)
 
     x_true = []
     x_pred = []
@@ -63,7 +62,7 @@ def show_truth_vs_pred_graph(
 
     ax.set_xlabel("Ground truth x")
     ax.set_ylabel("Predicted x")
-    ax.set_title(f"Ground Truth vs Predicted x (random {n_samples} training samples)")
+    ax.set_title(title)
     ax.legend()
     ax.set_aspect("equal", adjustable="box")
     fig.tight_layout()
@@ -72,12 +71,12 @@ def show_truth_vs_pred_graph(
 
 
 def show_loss_vs_x_graph(
+    title: str,
     n_samples: int,
     model,
     dataset,
     device: str,
     loss_fn,
-    seed: int | None = None,
     ax=None,
 ):
     """Plot per-sample loss against true x and return plot objects + summary metrics.
@@ -89,8 +88,7 @@ def show_loss_vs_x_graph(
     if n_samples <= 0:
         raise ValueError("n_samples must be > 0")
 
-    rng = random.Random(seed) if seed is not None else random
-    sample_indices = rng.sample(range(len(dataset)), n_samples)
+    sample_indices = random.sample(range(len(dataset)), n_samples)
 
     x_vals = []
     losses_per_sample = []
@@ -125,7 +123,7 @@ def show_loss_vs_x_graph(
     ax.scatter(x_vals, losses_per_sample, alpha=0.5, s=12)
     ax.set_xlabel("Actual label (raw x)")
     ax.set_ylabel("Loss (training objective)")
-    ax.set_title(f"Loss vs. x (random {n_samples} training samples)")
+    ax.set_title(title)
     fig.tight_layout()
 
     return fig, ax, worst_5_loss_avg, worst_5_losses
