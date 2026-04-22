@@ -1,7 +1,22 @@
 #let template(body) = {
+  // Same font as the BUT template
   set text(font: "New Computer Modern", lang: "en")
-  show math.equation: set text(weight: 400) // idk what this does
-  set par(justify: true)
+
+  // idk what this does
+  show math.equation: set text(weight: 400)
+
+  // first paragraph isn't indented, the rest is
+  // reduces the spacing between paragraphs (to it's similar to the BUT template)
+  set par(justify: true, first-line-indent: 2em, spacing: 0.7em)
+
+  // figures are numbered by the chapter they're in
+  set figure(numbering: num => {
+    let chapter = counter(heading).get().at(0, default: 0)
+    (chapter, num).map(str).join(".")
+  })
+
+  // figures have a little bit more space around them
+  show figure: set block(above: 2em, below: 2em)
 
   // Match the LaTeX thesis template layout on A4 as closely as possible.
   set page(
@@ -16,17 +31,17 @@
 
   show heading: set text(size: 1.2em)
 
-  // all top-level chapters start on new page
+  // all chapters start on new page and have a nice chapter heading
   show heading.where(depth: 1): it => {
-    if it.numbering == none {
-      it
-    } else {
+    if it.numbering == none { it } else {
       pagebreak()
       let chapter-no = numbering("1", ..counter(heading).at(it.location()))
-      block(below: 0.8em)[
-        #text(weight: "bold")[Chapter #chapter-no]
+      v(3em)
+      block(below: 2em)[
+        #text(weight: "bold", size: 1.2em)[Chapter #chapter-no]
+        // FIXME: this is disgusting and the person who wrote it should be ashamed of themselves
+        #heading(numbering: none, outlined: false)[#it.body]
       ]
-      it
     }
   }
 
@@ -61,33 +76,33 @@
 #let abstract-keywords(abstract-en: [], abstract-sk: [], keywords-en: [], keywords-sk: [], reference: []) = grid(
   rows: (auto, 1fr, auto, 1fr, auto, 1fr, auto, 1fr, auto),
   [
-    == Abstract
+    #heading(outlined: false, level: 2)[Abstract]
 
     #abstract-en
   ],
   [],
   [
-    == Abstrakt
+    #heading(outlined: false, level: 2)[Abstrakt]
     #show: slovak-text
 
     #abstract-sk
   ],
   [],
   [
-    == Keywords
+    #heading(outlined: false, level: 2)[Keywords]
 
     #keywords-en
   ],
   [],
   [
-    == Kľúčové slová
+    #heading(outlined: false, level: 2)[Kľúčové slová]
     #show: slovak-text
 
     #keywords-sk
   ],
   [],
   [
-    == Reference
+    #heading(outlined: false, level: 2)[Reference]
 
     #reference
   ],
