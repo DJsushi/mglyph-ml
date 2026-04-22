@@ -1,8 +1,8 @@
 #import "template.typ": *
 #show: template
 
-#page(margin: 0cm, image("title-page.svg"))
-#page(margin: 0cm, image("assignment.svg"))
+#page(margin: 0cm, image("res/title-page.svg"))
+#page(margin: 0cm, image("res/assignment.svg"))
 
 #let thesis = (
   title: [Exploring the Possibilities and Limitations of Computer Vision in Conjunction with Malleable Glyphs],
