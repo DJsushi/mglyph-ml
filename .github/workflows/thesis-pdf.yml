@@ -1,0 +1,63 @@
+name: Build and Publish Thesis PDF
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Typst
+        uses: typst-community/setup-typst@v3
+
+      - name: Compile thesis PDF
+        run: typst compile bp-typst/thesis.typ bp-typst/thesis.pdf
+
+      - name: Prepare Pages artifact
+        run: |
+          mkdir -p site
+          cp bp-typst/thesis.pdf site/thesis.pdf
+          cat > site/index.html << 'EOF'
+          <!doctype html>
+          <html lang="en">
+            <head>
+              <meta charset="utf-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1" />
+              <title>Thesis PDF</title>
+            </head>
+            <body>
+              <p><a href="./thesis.pdf">Open thesis PDF</a></p>
+            </body>
+          </html>
+          EOF
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
