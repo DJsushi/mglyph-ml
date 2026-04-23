@@ -132,41 +132,6 @@ The exact mechanisms behind ```py show()``` for the purposes of this work are no
 #let dark-red = rgb("#ed7575")
 
 #figure(
-  // diagram(
-  //   debug: true,
-  //   spacing: (0.5cm, 1cm),
-  //   node((0.1, 0), `show(`),
-  //   node((1, 0), `drawer=simple_circle`, fill: light-blue, stroke: dark-blue, shape: shapes.rect, corner-radius: 5pt),
-  //   edge((1, 2), "->"),
-  //   node((2, 0), `x=[5, 25, 50, 75, 95]`, fill: light-blue, stroke: dark-blue, shape: shapes.rect, corner-radius: 5pt),
-  //   edge((2, 2), "-->", [for each $x$]),
-  //   node((2.65, 0), `)`),
-
-  //   node((3, 1), `mg.Canvas()`, fill: light-blue, stroke: dark-blue, shape: shapes.rect, corner-radius: 5pt),
-  //   edge((3, 2), "-->"),
-
-  //   node((1, 2), `drawer(`, name: <drawer>),
-  //   node((2, 2), `x`, fill: light-red, stroke: dark-red, shape: shapes.rect, corner-radius: 5pt),
-  //   node(
-  //     (3, 2),
-  //     `canvas`,
-  //     fill: light-red,
-  //     stroke: dark-red,
-  //     shape: shapes.rect,
-  //     corner-radius: 5pt,
-  //     name: <drawer-canvas>,
-  //   ),
-  //   node((3.6, 2), `)`),
-
-  //   node(
-  //     enclose: ((1, 2), (4, 2)),
-  //     stroke: (paint: gray, dash: "dashed"),
-  //     corner-radius: 5pt,
-  //     name: <drawer-row>,
-  //   ),
-  //   edge((<image>), "-->"),
-  //   node(enclose: ((1, 4), (4, 4)), image("img/glyphs/progress-bar.png", width: 15cm), name: <image>, inset: 0pt),
-  // ),
   image("fig/diagrams/show-function.drawio.svg"),
   caption: [Diagram of the inner workings of the ```py show()``` function from the `mglyph` library. For every $x$ that gets passed into ```py show()```, it instantiates a new `mg.Canvas`, and passes it down to the ```py drawer()``` so that it can draw the glyph based on the passed argument `x`.],
 )
