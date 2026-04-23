@@ -18,6 +18,9 @@
   // figures have a little bit more space around them
   show figure: set block(above: 2em, below: 2em)
 
+  // when citing using prose, don't write all authors... If more than 2, write et al.
+  set cite(style: "res/iso690-numeric-en-fitvut-short.csl")
+
   // Match the LaTeX thesis template layout on A4 as closely as possible.
   set page(
     paper: "a4",

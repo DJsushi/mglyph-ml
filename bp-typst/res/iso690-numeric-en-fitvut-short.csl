@@ -1,0 +1,592 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Citation Style Language (CSL) equivalent of enplain.bst
+  Source:  enplain.bst — English bibliographic style for FIT VUT Brno theses
+           implementing ČSN ISO 690:2022 (ISO 690:2021)
+  Authors of original .bst: Radek Pysny, Jaroslav Dytrych, Adam Herout,
+           Petr Veigend (last update 03.04.2024)
+  CSL conversion: generated to match enplain.bst behaviour as closely as
+           CSL 1.0.2 allows.
+
+  Key formatting rules from the .bst:
+    • Author names: LASTNAME Firstname (small-caps in LaTeX → uppercase family here)
+    • Up to 5 authors shown; beyond that → "et al."
+    • Separator between authors: "; "
+    • Last-two separator: " and "
+    • Author block ends with "."
+    • Title of monographs: italic
+    • Publisher info: Place: Publisher, Year
+    • Online documents: medium type shown in brackets after title (e.g. "online")
+    • URL prefix: "Available at: "
+    • Cited/accessed: [cit. YYYY-MM-DD]
+    • ISBN / ISSN shown
+    • Numeric citation style: [1], [2], …
+    • Sort by citation order
+-->
+<style xmlns="http://purl.org/net/xbiblio/csl"
+       class="in-text"
+       version="1.0"
+       and="text"
+       delimiter-precedes-et-al="never"
+       delimiter-precedes-last="never"
+       et-al-min="3"
+       et-al-use-first="1"
+       demote-non-dropping-particle="never"
+       default-locale="en-GB">
+
+  <info>
+    <title>ISO 690:2022 numeric English (FIT VUT Brno – enplain)</title>
+    <title-short>ISO 690:2022 EN num (FIT VUT)</title-short>
+    <id>http://www.zotero.org/styles/iso690-numeric-en-fitvut</id>
+    <link rel="self" href="http://www.zotero.org/styles/iso690-numeric-en-fitvut"/>
+    <link href="http://www.fit.vutbr.cz/study/DP/BP.php?id=7848" rel="documentation"/>
+    <category citation-format="numeric"/>
+    <category field="generic-base"/>
+    <summary>Numeric English bibliography style matching enplain.bst used at FIT VUT Brno, conforming to ČSN ISO 690:2022.</summary>
+    <updated>2024-04-22T00:00:00+00:00</updated>
+    <rights license="http://creativecommons.org/licenses/by-sa/3.0/">
+      This work is licensed under a Creative Commons Attribution-ShareAlike 3.0 License
+    </rights>
+  </info>
+
+  <!-- ================================================================
+       LOCALE OVERRIDES
+       ================================================================ -->
+  <locale xml:lang="en">
+    <terms>
+      <term name="accessed">cit.</term>
+      <term name="available at">Available at</term>
+      <term name="editor" form="short">
+        <single>ed.</single>
+        <multiple>ed.</multiple>
+      </term>
+      <term name="edition" form="short">ed.</term>
+      <term name="page" form="short">
+        <single>p.</single>
+        <multiple>p.</multiple>
+      </term>
+      <term name="volume" form="short">vol.</term>
+      <term name="issue" form="short">no.</term>
+      <term name="in">In</term>
+      <term name="and">and</term>
+      <term name="et-al">et al.</term>
+      <term name="no date">s.a.</term>
+    </terms>
+  </locale>
+
+  <!-- ================================================================
+       MACROS
+       ================================================================ -->
+
+  <!-- Primary authors: LASTNAME Firstname; LASTNAME Firstname; ... and LASTNAME Firstname -->
+  <macro name="author">
+    <names variable="author">
+      <name
+        delimiter="; "
+        and="text"
+        delimiter-precedes-last="never"
+        delimiter-precedes-et-al="never"
+        name-as-sort-order="all"
+        sort-separator=" ">
+        <name-part name="family" text-case="uppercase"/>
+        <name-part name="given"/>
+      </name>
+      <et-al term="et-al"/>
+      <substitute>
+        <names variable="editor"/>
+        <names variable="translator"/>
+        <text macro="title-anon"/>
+      </substitute>
+    </names>
+  </macro>
+
+  <!-- Editor names (for edited works): LASTNAME Firstname (ed.) -->
+  <macro name="editor">
+    <names variable="editor">
+      <name
+        delimiter="; "
+        and="text"
+        delimiter-precedes-last="never"
+        delimiter-precedes-et-al="never"
+        name-as-sort-order="all"
+        sort-separator=" ">
+        <name-part name="family" text-case="uppercase"/>
+        <name-part name="given"/>
+      </name>
+      <et-al term="et-al"/>
+      <label form="short" prefix=" (" suffix=")"/>
+    </names>
+  </macro>
+
+  <!-- Author or editor (fallback chain) -->
+  <macro name="author-or-editor">
+    <choose>
+      <if variable="author">
+        <text macro="author"/>
+      </if>
+      <else-if variable="editor">
+        <text macro="editor"/>
+      </else-if>
+    </choose>
+  </macro>
+
+  <!-- Fallback title for anonymous works -->
+  <macro name="title-anon">
+    <text variable="title" font-style="italic"/>
+  </macro>
+
+  <!-- Medium type (online / CD-ROM / …) in brackets -->
+  <macro name="medium">
+    <choose>
+      <if variable="URL DOI" match="any">
+        <text value="online" prefix=" [" suffix="]"/>
+      </if>
+      <else-if variable="medium">
+        <text variable="medium" prefix=" [" suffix="]"/>
+      </else-if>
+    </choose>
+  </macro>
+
+  <!-- Title of monograph / book (italic) with optional subtitle -->
+  <macro name="title-book">
+    <text variable="title" font-style="italic"/>
+    <choose>
+      <if variable="title-short">
+        <!-- subtitle stored in title-short field by convention -->
+      </if>
+    </choose>
+    <text macro="medium"/>
+  </macro>
+
+  <!-- Title of article / chapter (non-italic) -->
+  <macro name="title-article">
+    <text variable="title"/>
+    <text macro="medium"/>
+  </macro>
+
+  <!-- Edition: "2nd ed." -->
+  <macro name="edition">
+    <choose>
+      <if is-numeric="edition">
+        <group delimiter=" ">
+          <number variable="edition" form="ordinal"/>
+          <label variable="edition" form="short"/>
+        </group>
+      </if>
+      <else>
+        <text variable="edition"/>
+      </else>
+    </choose>
+  </macro>
+
+  <!-- Publisher information: Place: Publisher -->
+  <macro name="publisher-info">
+    <choose>
+      <if variable="publisher-place publisher" match="any">
+        <group delimiter=": ">
+          <choose>
+            <if variable="publisher-place">
+              <text variable="publisher-place"/>
+            </if>
+            <!-- no place marker omitted for brevity; add [s.l.] if needed -->
+          </choose>
+          <choose>
+            <if variable="publisher">
+              <text variable="publisher"/>
+            </if>
+          </choose>
+        </group>
+      </if>
+    </choose>
+  </macro>
+
+  <!-- Year only -->
+  <macro name="year">
+    <choose>
+      <if variable="issued">
+        <date variable="issued">
+          <date-part name="year"/>
+        </date>
+      </if>
+      <else>
+        <text term="no date"/>
+      </else>
+    </choose>
+  </macro>
+
+  <!-- Publisher info + year: Place: Publisher, YYYY -->
+  <macro name="publisher-year">
+    <group delimiter=", ">
+      <text macro="publisher-info"/>
+      <text macro="year"/>
+    </group>
+  </macro>
+
+  <!-- ISBN -->
+  <macro name="isbn">
+    <choose>
+      <if variable="ISBN">
+        <text variable="ISBN" prefix="ISBN "/>
+      </if>
+    </choose>
+  </macro>
+
+  <!-- ISSN -->
+  <macro name="issn">
+    <choose>
+      <if variable="ISSN">
+        <text variable="ISSN" prefix="ISSN "/>
+      </if>
+    </choose>
+  </macro>
+
+  <!-- ISBN or ISSN (whichever is available, ISBN preferred) -->
+  <macro name="isbn-or-issn">
+    <choose>
+      <if variable="ISBN">
+        <text macro="isbn"/>
+      </if>
+      <else-if variable="ISSN">
+        <text macro="issn"/>
+      </else-if>
+    </choose>
+  </macro>
+
+  <!-- URL / DOI — "Available at: <url>" -->
+  <macro name="url">
+    <choose>
+      <if variable="DOI">
+        <group delimiter=": ">
+          <text term="available at" text-case="capitalize-first"/>
+          <text variable="DOI" prefix="https://doi.org/"/>
+        </group>
+      </if>
+      <else-if variable="URL">
+        <group delimiter=": ">
+          <text term="available at" text-case="capitalize-first"/>
+          <text variable="URL"/>
+        </group>
+      </else-if>
+    </choose>
+  </macro>
+
+  <!-- Accessed / cited date: [cit. YYYY-MM-DD] -->
+  <macro name="accessed">
+    <choose>
+      <if variable="accessed">
+        <group prefix=" [" suffix="]">
+          <text term="accessed" suffix=" "/>
+          <date variable="accessed">
+            <date-part name="year"/>
+            <date-part name="month" form="numeric-leading-zeros" prefix="-"/>
+            <date-part name="day"   form="numeric-leading-zeros" prefix="-"/>
+          </date>
+        </group>
+      </if>
+    </choose>
+  </macro>
+
+  <!-- Pages: p. 12–15 -->
+  <macro name="pages">
+    <choose>
+      <if variable="page">
+        <group delimiter=" ">
+          <label variable="page" form="short"/>
+          <text variable="page"/>
+        </group>
+      </if>
+    </choose>
+  </macro>
+
+  <!-- Volume + issue: vol. 3, no. 2 -->
+  <macro name="volume-issue">
+    <group delimiter=", ">
+      <choose>
+        <if variable="volume">
+          <group delimiter=" ">
+            <label variable="volume" form="short"/>
+            <text variable="volume"/>
+          </group>
+        </if>
+      </choose>
+      <choose>
+        <if variable="issue">
+          <group delimiter=" ">
+            <label variable="issue" form="short"/>
+            <text variable="issue"/>
+          </group>
+        </if>
+      </choose>
+    </group>
+  </macro>
+
+  <!-- Series (collection) + number -->
+  <macro name="series">
+    <choose>
+      <if variable="collection-title">
+        <group delimiter=", ">
+          <text variable="collection-title"/>
+          <choose>
+            <if variable="collection-number">
+              <group delimiter=" ">
+                <text value="no."/>
+                <text variable="collection-number"/>
+              </group>
+            </if>
+          </choose>
+        </group>
+      </if>
+    </choose>
+  </macro>
+
+  <!-- Container editor for In: sections -->
+  <macro name="container-editor">
+    <names variable="editor">
+      <name
+        delimiter="; "
+        and="text"
+        delimiter-precedes-last="never"
+        name-as-sort-order="all"
+        sort-separator=" ">
+        <name-part name="family" text-case="uppercase"/>
+        <name-part name="given"/>
+      </name>
+      <et-al term="et-al"/>
+      <label form="short" prefix=" (" suffix=")"/>
+    </names>
+  </macro>
+
+  <!-- Thesis type label -->
+  <macro name="thesis-type">
+    <choose>
+      <if variable="genre">
+        <text variable="genre"/>
+      </if>
+      <else>
+        <choose>
+          <if type="thesis">
+            <text value="Thesis"/>
+          </if>
+        </choose>
+      </else>
+    </choose>
+  </macro>
+
+  <!-- Note -->
+  <macro name="note">
+    <text variable="note"/>
+  </macro>
+
+  <!-- ================================================================
+       CITATION (in-text)  →  [1], [2], [1; 3]
+       ================================================================ -->
+  <citation collapse="citation-number" after-collapse-delimiter="; ">
+    <sort>
+      <key variable="citation-number"/>
+    </sort>
+    <layout prefix="[" suffix="]" delimiter=", ">
+      <group delimiter=" ">
+        <text variable="citation-number"/>
+        <group delimiter=" ">
+          <label variable="locator" form="short"/>
+          <text variable="locator"/>
+        </group>
+      </group>
+    </layout>
+  </citation>
+
+  <!-- ================================================================
+       BIBLIOGRAPHY
+       ================================================================ -->
+  <bibliography second-field-align="flush" entry-spacing="0">
+    <sort>
+      <key variable="citation-number"/>
+    </sort>
+    <layout>
+      <text variable="citation-number" prefix="[" suffix="] "/>
+
+      <choose>
+
+        <!-- ── BOOK / BOOKLET / PROCEEDINGS (monograph) ── -->
+        <if type="book">
+          <group delimiter=". " suffix=".">
+            <text macro="author-or-editor"/>
+            <group>
+              <text macro="title-book"/>
+            </group>
+            <text macro="edition"/>
+            <text variable="translator" prefix="Transl. "/>
+            <group delimiter=", ">
+              <text macro="publisher-year"/>
+            </group>
+            <text macro="pages"/>
+            <text macro="series"/>
+            <text macro="isbn"/>
+            <text macro="url"/>
+            <text macro="accessed"/>
+            <text macro="note"/>
+          </group>
+        </if>
+
+        <!-- ── CHAPTER / INBOOK / INCOLLECTION / INPROCEEDINGS ── -->
+        <else-if type="chapter paper-conference">
+          <group delimiter=". " suffix=".">
+            <text macro="author"/>
+            <text macro="title-article"/>
+          </group>
+          <text value=" In: " font-style="normal"/>
+          <group delimiter=". " suffix=". ">
+            <text macro="container-editor"/>
+            <text variable="container-title" font-style="italic"/>
+            <text macro="edition"/>
+            <text macro="series"/>
+            <group delimiter=", ">
+              <text macro="publisher-year"/>
+              <text macro="pages"/>
+            </group>
+          </group>
+          <group delimiter=". " suffix=".">
+            <text macro="isbn-or-issn"/>
+            <text macro="url"/>
+            <text macro="accessed"/>
+            <text macro="note"/>
+          </group>
+        </else-if>
+
+        <!-- ── JOURNAL ARTICLE ── -->
+        <else-if type="article-journal article-magazine article article-newspaper" match="any">
+          <group delimiter=". " suffix=".">
+            <text macro="author"/>
+            <text macro="title-article"/>
+            <group delimiter=", ">
+              <text variable="container-title" font-style="italic"/>
+              <group delimiter=", ">
+                <text macro="year"/>
+                <text macro="volume-issue"/>
+              </group>
+              <text macro="pages"/>
+            </group>
+            <text macro="issn"/>
+            <text macro="url"/>
+            <text macro="accessed"/>
+            <text macro="note"/>
+          </group>
+        </else-if>
+
+        <!-- ── THESIS (bachelor's, master's, PhD) ── -->
+        <else-if type="thesis">
+          <group delimiter=". " suffix=".">
+            <text macro="author"/>
+            <text variable="title" font-style="italic"/>
+            <text macro="medium"/>
+            <text macro="thesis-type"/>
+            <group delimiter=", ">
+              <text variable="publisher-place"/>
+              <group delimiter=", ">
+                <text variable="publisher"/>
+                <text macro="year"/>
+              </group>
+            </group>
+            <text macro="pages"/>
+            <text macro="isbn"/>
+            <group delimiter=" ">
+              <choose>
+                <if variable="note">
+                  <text value="Supervisor:"/>
+                  <!-- supervisor note is typically stored in 'note' by the user -->
+                </if>
+              </choose>
+            </group>
+            <text macro="url"/>
+            <text macro="accessed"/>
+            <text macro="note"/>
+          </group>
+        </else-if>
+
+        <!-- ── WEBPAGE / WEBSITE / MISC (online source) ── -->
+        <else-if type="webpage post-weblog post" match="any">
+          <group delimiter=". " suffix=".">
+            <text macro="author"/>
+            <group>
+              <text variable="title" font-style="italic"/>
+              <text macro="medium"/>
+            </group>
+            <text variable="container-title" font-style="italic"/>
+            <text macro="edition"/>
+            <group delimiter=", ">
+              <text macro="publisher-year"/>
+            </group>
+            <text macro="url"/>
+            <text macro="accessed"/>
+            <text macro="note"/>
+          </group>
+        </else-if>
+
+        <!-- ── REPORT / TECHREPORT / MANUAL ── -->
+        <else-if type="report">
+          <group delimiter=". " suffix=".">
+            <text macro="author-or-editor"/>
+            <group>
+              <text variable="title" font-style="italic"/>
+              <text macro="medium"/>
+            </group>
+            <group delimiter=". ">
+              <text variable="genre"/>
+              <text variable="number"/>
+            </group>
+            <text macro="edition"/>
+            <group delimiter=", ">
+              <text macro="publisher-year"/>
+            </group>
+            <text macro="pages"/>
+            <text macro="url"/>
+            <text macro="accessed"/>
+            <text macro="note"/>
+          </group>
+        </else-if>
+
+        <!-- ── CONFERENCE PROCEEDINGS (standalone volume) ── -->
+        <else-if type="motion_picture broadcast" match="any">
+          <group delimiter=". " suffix=".">
+            <text macro="author-or-editor"/>
+            <group>
+              <text variable="title" font-style="italic"/>
+              <text macro="medium"/>
+            </group>
+            <text macro="edition"/>
+            <group delimiter=", ">
+              <text macro="publisher-year"/>
+            </group>
+            <text macro="isbn-or-issn"/>
+            <text macro="url"/>
+            <text macro="accessed"/>
+            <text macro="note"/>
+          </group>
+        </else-if>
+
+        <!-- ── DEFAULT (fallback for misc, software, dataset, etc.) ── -->
+        <else>
+          <group delimiter=". " suffix=".">
+            <text macro="author-or-editor"/>
+            <group>
+              <text variable="title" font-style="italic"/>
+              <text macro="medium"/>
+            </group>
+            <text macro="edition"/>
+            <text variable="version" prefix="Version "/>
+            <group delimiter=", ">
+              <text macro="publisher-year"/>
+            </group>
+            <text macro="pages"/>
+            <text macro="series"/>
+            <text macro="isbn-or-issn"/>
+            <text macro="url"/>
+            <text macro="accessed"/>
+            <text macro="note"/>
+          </group>
+        </else>
+
+      </choose>
+    </layout>
+  </bibliography>
+</style>
