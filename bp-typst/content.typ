@@ -62,14 +62,14 @@ This chapter introduces the _malleable glyph_, explains its purpose, the current
 The concept of a malleable glyph was first introduced by #cite(<BibMalleableGlyph>, form: "prose"). They defined the malleable glyph as an image of a fixed size (e.g. $1 times 1$ inch), which carries encoded information in its appearance. For the purpose of their research, they gave this encoded information a specific format: a single scalar value they call $x$, with $x in [0.0, 100.0]$. This scalar value is then used to dictate the appearance of the malleable glyph itself. To better understand how this works, let's look at some examples.
 
 #figure(
-  image("img/glyphs/green-triangle.png"),
+  image("fig/glyphs/green-triangle.png"),
   caption: [A malleable glyph showing a green triangle that encodes the value of $x$ in the size of the glyph. A small value of $x$ renders a small triangle, and as $x -> 100.0$, the triangle fills the entire glyph.],
 ) <fig-green-triangle>
 
 @fig-green-triangle shows how a malleable glyph might look like. The triangle's size is linearly mapped to the value of $x$, interpolating from infinitesimal to edge-to-edge. The author of the glyph can choose to vary any aspect of the glyph in accordance with the parameter $x$. The size, color, shape, roundedness, spikiness, contrast, or even fractal structure #footnote[https://github.com/adamherout/mglyph] just to name a few. Another example of what's possible can be seen in @fig-fractal-tree.
 
 #figure(
-  image("img/glyphs/fractal-tree.png"),
+  image("fig/glyphs/fractal-tree.png"),
   caption: [A fractal tree with a depth of 10, that varies the branching angle based on $x$, as],
 ) <fig-fractal-tree>
 
