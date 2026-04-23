@@ -18,6 +18,15 @@
   // figures have a little bit more space around them
   show figure: set block(above: 2em, below: 2em)
 
+  // increase a little bit the gap between the figure and the caption... it was too small IMO
+  set figure(gap: 1.2em)
+
+  // code blocks have a little bit more space around them
+  show raw: set block(above: 2em, below: 2em)
+
+  // don't break lines of code (gotta override this behavior for long code snippets but i don't think there are many, so that's why i am changing this default behavior)
+  show raw: set block(breakable: false)
+
   // when citing using prose, don't write all authors... If more than 2, write et al.
   set cite(style: "res/iso690-numeric-en-fitvut-short.csl")
 
