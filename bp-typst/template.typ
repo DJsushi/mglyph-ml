@@ -55,6 +55,10 @@
         #heading(numbering: none, outlined: false)[#it.body]
       ]
     }
+
+    // we have to reset the figure counters each chapter because otherwise we get incorrect figure numbering
+    counter(figure.where(kind: image)).update(0)
+    counter(figure.where(kind: table)).update(0)
   }
 
   // do not break lines in inline equations
