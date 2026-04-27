@@ -1,5 +1,8 @@
 #import "template.typ": *
 #import "@preview/fletcher:0.5.8" as fletcher: diagram, edge, node, shapes
+#import "@preview/cheq:0.3.0": checklist
+
+#show: checklist
 
 = Introduction
 
@@ -160,16 +163,15 @@ The exact mechanisms behind ```py show()``` for the purposes of this work are no
 )
 
 
-
-
-
-
-
 = Machine Learning Fundamentals for Glyph Decoding
 
 we explain all the important details that are necessary for decoding glyphs... There are an infinite amount of ways that we can train a NN to decode glyphs. For example we could train a neural network on pairs like it has been done by Mohaned Anene
 
 This chapter provides the technical "how-to" of your project, serving as a manual for your successor.
+
+#TODO[
+  -
+]
 
 == Development Enviromnment: `pip`, `poetry` and `uv`
 
@@ -209,14 +211,14 @@ Package Structure: Describe the mglyph_ml Python package in src/ and why functio
 Notebook Workflow: Explain the separation of notebooks for interactive experimentation versus core logic.
 
 
-== Data Engineering Pipeline:
+*Data Engineering Pipeline:*
 Archive Format: Detail the .mglyph zip-like structure and the manifest.json schema (using Pydantic models like DatasetManifest).
 Optimized Loading: Describe your solution for memory constraints: loading compressed PNGs and decoding them on-the-fly using cv2.imdecode and ThreadPoolExecutor for parallelism.
-== Experiment Orchestration and Tracking:
+*Experiment Orchestration and Tracking:*
 ClearML Integration: How you used ClearML for logging metrics, parameters, and maintaining experiment history.
 Automation with Papermill: Describe using convert-notebook.sh to inject parameters into notebooks for batch processing.
 Remote Execution: Practical use of the "Sophie" server with tmux to run long-term training sessions.
-== Testing and Validation:
+*Testing and Validation:*
 Unit Tests: Briefly mention using pytest to verify critical logic, such as the labels_to_bins mapping.
 
 == ClearML
@@ -232,7 +234,7 @@ ClearML offers a feature called hyperparameter optimizering. Quite a lot of time
 
 However, when you wanna use HO for your task, you need the full ClearML setup. This includes all the agents as well as a correctly set up repository.
 
-== Unsuccessful Pipiline Approach
+== Unsuccessful Pipeline Approach
 
 ClearML has a concept of pipelines.
 
@@ -244,9 +246,18 @@ ClearML has a concept of pipelines.
 
 At the beginning of my journey, I wanted to use these pipelines for experiments. The idea was to have a clearML hyperparameter optimizer try to search the hyperparameter value space (idk if this term exists...) and to run the pipeline for every single run of the experiment. The pipeline itself is a ClearML task, so it made things simpler. However, my problem with this was that the usage of pipelines in clearml requires the entire setup with agents and everything. My experiment itself was usually only a few seconds long, and the overhead of clearml on top of the experiment was making things too complicated to debug. If you wanna run a HPO, you gotta first run the experiment task once, so that it gets registered onto the ClearML servers. After that, ClearML assigns a unique ID to the experiment's task. This unique ID has to be manually pasted into the HPO so it knows which task to clone. What clearML does is that when you actually run the task even on your local computer, it reports the current commit hash to the clearml server as well as all the uncommitted changes. It then clones the repo onto the agent, and checkouts the commit. It then applies the uncommitted changes, and starts setting up the virtual environmnent. After that, it finally starts the Python script. Mind you, clearML cannot run Jupyter notebooks in this pipeline-oriented fashion. So instead of experimenting in your notebooks, you gotta experiment in actual Python files which is in my opinion super impractical since the whole point of Jupyter notebooks is that one can try out different things and debug super easily since you can strategically run parts of your code and see how it behaves. If something went wrong, I had to use the Clearml web UI to inspect the logs. The whole process was tedious and the feedback loop from pressing the "Enter" button on my laptop and getting error messages was just too long and not sustainable. So, in the end, I realized that /tudy cesta nevede/ and I decided it's best to switch to a more local-oriented approach for running experiments.
 
-== The Final 
+== The Final Approach Using Papermill
 
+Finally, I decided to adopt a much simpler approach to running experiments. prof. Herout recommended to me that he uses a Python parameter injection library called Papermill #footnote[https://papermill.readthedocs.io/en/latest/]. If one wants to use papermill, this is what you gotta do:
+- install Papermill as one of the project's dependencies
+- label one cell in your Jupyter notebook with the tag "parameters" (yes, Jupyter cells can be tagged)
+- use the command:
+```shell-unix-generic
+papermill input-notebook.ipynb output-notebook.pynb -p a 42 -p b 'value of b'
+``` #TODO[i dont like this formatting of the code]
+- wait for papermill to finish and the executed notebook with the injected parameters will be available in `output-notebook.ipynb`.
 
+Papermill works by simply inserting a new artificial cell into the notebook rigt after the `parameters`-tagged cell. This cell simply contains for this example two lines: ```py a=42``` and ```py b='value of b'```. When the notebook is run, the cell after the `parameters` cell simply overrides the global variables defined in the `parameters` cell. In practice, I do not call Papermill directly. Instead, I use a small convenience wrapper script called `convert-notebook.sh` #footnote[Credit: prof. Herout], which standardizes the command-line interface for all experiments. The script automatically handles output placement and naming, sanitizes run names, and converts `key=value` arguments into the correct Papermill `-p` format. This reduces repetitive boilerplate, keeps experiment outputs consistently organized in a nice `out/` directory, and helps with naming each experiment by a unique name that usually contains the names and values of varied parameters for that specific experiment.
 
 == Trouble With ClearML
 
@@ -273,6 +284,12 @@ Maintenance Overhead: You had to spend time deleting old experiment history just
 
 5. Supervisor's Own Struggles
 It is worth noting that your supervisor, Herout, also attempted to install a local ClearML server and concluded that it was a significant "pain," eventually admitting that the installation "laughed in his face." This reinforced the decision to stick to the hosted version for basic reporting rather than trying to build a complex, local optimization cluster.
+
+== Trouble With The Straight Line
+
+Explain the trouble I went through with getting the damn straight line to work. I first tried a clssical regression model, I always got these huge tails on both ends of the straight line. Honestly I have no idea why that was, and I wasn't able to make it work successfully.
+
+The second attempt as binned regression.
 
 = Experiments And Results
 
