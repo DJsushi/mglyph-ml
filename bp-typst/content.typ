@@ -170,8 +170,22 @@ we explain all the important details that are necessary for decoding glyphs... T
 This chapter provides the technical "how-to" of your project, serving as a manual for your successor.
 
 #TODO[
-  -
+  - [] regression in machine learning
+  - [ ] hehe
 ]
+
+== Regression in Machine Learning
+
+Machine learning has many different fields, we can do regression, classification, clustering, ... ultimately, the malleable glyph computer vision problem is a regression problem because we are guessing a single scalar value x. Regression in mchine learning is the process of estimating a relationship between an dependent variable (in ML called a "label") and one or more independent variables. A simple case of a regression problem is estimating the price of a house depending on the area of the house's floor. A plot showing different houses and their price can be seen here:
+
+#figure(
+  rect([Nice graph lol], width: 50%, height: 5cm),
+  caption: [The horizontal axis (the independent variable) contains the house's flooring area, and the vertical axis (the dependent variable) contains the price of the house. We can see that as the house area increases, so does the price.],
+  // placement: top
+)
+
+Now, if we were a house selling company, we would like to have some kind of automated system that can predict at which price we want to sell a house depending on its floor area. They can train a machine learning model on the data, and once the model has successfully learned the relationship between the floor area and the price, we can try to ask the model for the price of a house whose floor area it has never seen before. If the model is a good
+
 
 == Development Enviromnment: `pip`, `poetry` and `uv`
 
