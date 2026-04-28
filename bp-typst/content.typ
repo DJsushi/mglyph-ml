@@ -1,6 +1,8 @@
 #import "template.typ": *
+#import "lib.typ": number-line
 #import "@preview/fletcher:0.5.8" as fletcher: diagram, edge, node, shapes
 #import "@preview/cheq:0.3.0": checklist
+#import "@preview/cetz:0.5.0": canvas, draw
 
 #show: checklist
 
@@ -158,7 +160,7 @@ The exact mechanisms behind ```py show()``` for the purposes of this work are no
 
 #figure(
   image("fig/diagrams/show-function.drawio.svg", width: 100%),
-  caption: [Diagram of the inner workings of the ```py show()``` function from the `mglyph` library. For every $x$ that gets passed into ```py show()```, it instantiates a new `mg.Canvas`, and passes it down to the ```py drawer()``` so that it can draw the glyph based on the passed argument `x`.],
+  caption: [Diagram of the inner workings of the ```py show()``` function from the `mglyph` library. For every $x$ that gets passed into ```py show()```, it instantiates a new `mg.Canvas`, and passes it down to the ```py drawer()``` so that it can draw the glyph based on the passed argument `x`. #TODO[this diagram needs shadows and nicer arrows... make it nicer u know]],
   placement: top,
 )
 
@@ -171,7 +173,7 @@ This chapter provides the technical "how-to" of your project, serving as a manua
 
 #TODO[
   - [] regression in machine learning
-  - [ ] hehe
+  - binned regression
 ]
 
 == Regression in Machine Learning
@@ -184,8 +186,54 @@ Machine learning has many different fields, we can do regression, classification
   // placement: top
 )
 
-Now, if we were a house selling company, we would like to have some kind of automated system that can predict at which price we want to sell a house depending on its floor area. They can train a machine learning model on the data, and once the model has successfully learned the relationship between the floor area and the price, we can try to ask the model for the price of a house whose floor area it has never seen before. If the model is a good
+Now, if we were a house selling company, we would like to have some kind of automated system that can predict at which price we want to sell a house depending on its floor area. They can train a machine learning model on the data, and once the model has successfully learned the relationship between the floor area and the price, we can try to ask the model for the price of a house whose floor area it has never seen before. If the model is well-designed, it will predict a pretty accurate price for the house whose floor size it has not seen before.
 
+
+
+== Binned Regression
+
+The binned regression that is implemented in this project went through multiple iterations. Here, I will explain the first iteration stolen from Mohaned and then also the improved implementation and a possible explanation of why the previous one didn't work and why it needed an improvement.
+
+The first implementation looked something like this:
+
+We divide the interval [0..100] into so-called "divisions", whose count is denoted by the letter $D$. We then calculate the distance between so-called "centroids". This distance is calculated in this manner:
+
+$ Delta_c = 100 / D $
+
+We then calculate the number of _centroids_:
+
+$ C = D + 1 $
+
+After that, we can simply compute the bin centers as evenly-spaced points across the interval $[0, 100]$:
+
+$
+  c_i = i dot ("end" - "start") / (C - 1) = i dot (100 - 0) / (C - 1) = i dot 100 / (C - 1) quad "for" quad i = 0, 1, ..., C - 1
+$
+
+For a number of divisions $D = 5$, we would get a centroid count of $C = D + 1 = 6$.
+
+
+#figure(
+  number-line(
+    points: (0, 25, 50, 75, 100),
+    start: -25,
+    end: 125,
+  ),
+  caption: [The distribution of centroids on the number line (first iteration). $C$ centroids are evenly distributed from 0 until 100.],
+)
+
+The issue with the first iteration was that the neural network wasn't ...
+
+#TODO[i confirmed by experiment `experiment-centroid-distribution.ipynb` that indeed the NN is performing worse with the first version of the centroids... Now... this is an experiment, so do I put it into the next part? Or do I mention it here? The actual explanation of binned regression belongs here but there's also an experiment that provided me with the information that the version 2 is better and idk where to mention that...]
+
+#figure(
+  number-line(
+    points: (-25, 0, 25, 50, 75, 100, 125),
+    start: -50,
+    end: 150,
+  ),
+  caption: [blablabla],
+)
 
 == Development Enviromnment: `pip`, `poetry` and `uv`
 

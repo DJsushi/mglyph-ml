@@ -1,4 +1,6 @@
 #let template(body) = {
+  let block-spacing = 2em
+
   // Same font as the BUT template
   set text(font: "New Computer Modern", lang: "en")
 
@@ -16,13 +18,13 @@
   })
 
   // figures have a little bit more space around them
-  show figure: set block(above: 2em, below: 2em)
+  show figure: set block(above: block-spacing, below: block-spacing)
 
   // increase a little bit the gap between the figure and the caption... it was too small IMO
   set figure(gap: 1.2em)
 
   // code blocks have a little bit more space around them
-  show raw: set block(above: 2em, below: 2em)
+  show raw: set block(above: block-spacing, below: block-spacing)
 
   // don't break lines of code (gotta override this behavior for long code snippets but i don't think there are many, so that's why i am changing this default behavior)
   show raw: set block(breakable: false)
@@ -42,6 +44,12 @@
   )
 
   show heading: set text(size: 1.2em)
+
+  // we need numbered equations!
+  set math.equation(numbering: "(1)")
+
+  // also space around math equations
+  show math.equation.where(block: true): set block(above: block-spacing, below: block-spacing)
 
   // all chapters start on new page and have a nice chapter heading
   show heading.where(depth: 1): it => {
