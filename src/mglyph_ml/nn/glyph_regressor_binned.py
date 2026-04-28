@@ -4,6 +4,12 @@ import torch
 from torch import nn
 
 
+def _scaled_channels(base_channels: int, width_mult: float) -> int:
+    """Scale channels with width multiplier and round to a hardware-friendly multiple."""
+    scaled = int(round(base_channels * width_mult / 8.0) * 8)
+    return max(8, scaled)
+
+
 class BinnedGlyphRegressor(nn.Module):
     """
     Regresses x via classification over fixed-width bins.
@@ -12,34 +18,46 @@ class BinnedGlyphRegressor(nn.Module):
     done in x-space and converted back to normalized space when needed.
     """
 
-    def __init__(self, image_resolution: tuple[int, int] = (64, 64), num_divisions: int = 5):
+    def __init__(
+        self,
+        image_resolution: tuple[int, int] = (64, 64),
+        num_divisions: int = 5,
+        width_mult: float = 1,
+    ):
         super().__init__()
 
         if num_divisions <= 0:
             raise ValueError("num_bins must be > 0")
         if image_resolution[0] <= 0 or image_resolution[1] <= 0:
             raise ValueError("image_resolution values must be > 0")
+        if width_mult <= 0.0:
+            raise ValueError("width_mult must be > 0")
+
+        c1 = _scaled_channels(32, width_mult)
+        c2 = _scaled_channels(64, width_mult)
+        c3 = _scaled_channels(128, width_mult)
 
         self.num_bins = num_divisions + 3
         self.bin_size_x = 100.0 / self.num_bins
         self.image_resolution = image_resolution
+        self.width_mult = width_mult
 
         self.features = nn.Sequential(
-            nn.Conv2d(3, 32, kernel_size=3, padding=1),
-            nn.Conv2d(32, 32, kernel_size=3, padding=1),
+            nn.Conv2d(3, c1, kernel_size=3, padding=1),
+            nn.Conv2d(c1, c1, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(2),
-            nn.Conv2d(32, 64, kernel_size=3, padding=1),
-            nn.Conv2d(64, 64, kernel_size=3, padding=1),
+            nn.Conv2d(c1, c2, kernel_size=3, padding=1),
+            nn.Conv2d(c2, c2, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(2),
-            nn.Conv2d(64, 128, kernel_size=3, padding=1),
-            nn.Conv2d(128, 128, kernel_size=3, padding=1),
+            nn.Conv2d(c2, c3, kernel_size=3, padding=1),
+            nn.Conv2d(c3, c3, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(2),
         )
 
-        flattened_features = 128 * (self.image_resolution[0] // 8) * (self.image_resolution[1] // 8)
+        flattened_features = c3 * (self.image_resolution[0] // 8) * (self.image_resolution[1] // 8)
         if flattened_features <= 0:
             raise ValueError("image_resolution is too small for 3 pooling stages")
 
