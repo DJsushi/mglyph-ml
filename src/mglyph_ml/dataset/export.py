@@ -106,8 +106,16 @@ def create_dataset(name: str, creation_time: datetime = datetime.now()) -> _Data
 
 
 def export_dataset(
-    name: str, path: Path, drawer: Drawer, seed: int | None = None, n_samples: int = 10_000
+    name: str,
+    path: Path,
+    drawer: Drawer,
+    seed: int | None = None,
+    n_samples: int = 10_000,
+    canvas_parameters: CanvasParameters | None = None,
 ) -> None:
+    if canvas_parameters is None:
+        canvas_parameters = CanvasParameters(canvas_round_corner=False)
+
     # Ensure the output directory exists
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -136,5 +144,5 @@ def export_dataset(
     for x in xvalues_test:
         dataset.add_sample(drawer, x, split="1")
 
-    dataset.export(path)
+    dataset.export(path, canvas_parameters)
     print(f"Generated: {path}")

@@ -30,6 +30,7 @@ def load_split_samples(
     shuffle: bool = False,
     seed: int | None = None,
     desired_size: int | tuple[int, int] | None = None,
+    keep_alpha: bool = False,
 ) -> list[LoadedSample]:
     """
     Loads all the images and labels from the dataset from a certain specified split. It also supports specifying
@@ -68,9 +69,20 @@ def load_split_samples(
         max_height = None
 
     # Load all images from memory using OpenCV (faster than PIL, directly to numpy)
+    imread_flag = cv2.IMREAD_UNCHANGED if keep_alpha else cv2.IMREAD_COLOR
+
     def load_image_cv2(sample):
         img_bytes = temp_archive.read(sample.filename)
-        img_array = cv2.imdecode(np.frombuffer(img_bytes, np.uint8), cv2.IMREAD_COLOR)
+        img_array = cv2.imdecode(np.frombuffer(img_bytes, np.uint8), imread_flag)
+
+        if img_array is None:
+            raise ValueError(f"Failed to decode image: {sample.filename}")
+
+        if keep_alpha:
+            if img_array.shape[2] == 4:
+                img_array = cv2.cvtColor(img_array, cv2.COLOR_BGRA2RGBA)
+        else:
+            img_array = cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB)
 
         if max_width is not None and max_height is not None:
             height, width = img_array.shape[:2]
@@ -125,11 +137,12 @@ def show_datasets(
     for row, dataset in enumerate(datasets):
         dataset_name = getattr(dataset, "name", f"Dataset {row + 1}")
 
-        indices_in_range = [
-            index
-            for index in range(len(dataset))
-            if x_min <= float(dataset[index][1]) <= x_max
-        ]
+        # indices_in_range = [
+        #     index
+        #     for index in range(len(dataset))
+        #     if x_min <= float(dataset[index][1]) <= x_max
+        # ]
+        indices_in_range = range(len(dataset))
 
         if not indices_in_range:
             raise ValueError(f"No samples from {dataset_name} fall within x_range={x_range}")
