@@ -23,6 +23,7 @@ class BinnedGlyphRegressor(nn.Module):
         image_resolution: tuple[int, int] = (64, 64),
         num_divisions: int = 5,
         width_mult: float = 1,
+        use_new_centroid_distribution: bool = True,
     ):
         super().__init__()
 
@@ -71,8 +72,12 @@ class BinnedGlyphRegressor(nn.Module):
         # Use true bin midpoints so centers align with labels_to_bins binning.
         bin_center_distance = 100 / num_divisions
         centroid_count = num_divisions + 3
-        bin_centers_x = torch.linspace(-bin_center_distance, 100 + bin_center_distance, centroid_count)
-        # bin_centers_x = torch.linspace(0, 100, centroid_count)
+
+        if use_new_centroid_distribution:
+            bin_centers_x = torch.linspace(-bin_center_distance, 100 + bin_center_distance, centroid_count)
+        else:
+            bin_centers_x = torch.linspace(0, 100, centroid_count)
+
         self.register_buffer("bin_centers_x", bin_centers_x)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
