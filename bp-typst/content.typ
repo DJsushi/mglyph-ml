@@ -10,54 +10,6 @@
 
 #TODO[intro]
 
-= Plan
-
-*Explain malleable glyphs:*
-- what they are
-- why research on them is important
-- technical details on how they work (how can we encode a floating-point scalar value into a 1x1 in image?)
-- show some examples of glyphs
-- maybe touch on Q-methodology? Or just def mention Herout's article
-
-*Explain machine learning:*
-- what machine learning is
-- deep neural networks
-- convolutional neural networks
-- structure of neural network
-  - maybe put like a diagram here of my NN (or maybe keep that later for the implementation?... or maybe just put a diagram of a generic CNN?)
-- explain regression
-- explain binned regression
-
-
-*My implementation:*
-- Python project using UV as build system
-  - idk if it's relevant but i can explain why it's better than pip because dependencies are declared in a single file and UV makes sure the environment mirrors the declaration at all times (idempotency)
-- organization of the project
-  - notebooks are separate from code
-  - working code is extracted into functions that live outside notebooks
-- structure of datasets
-  - mention splits, manifest...
-- usage of ClearML for reporting and analysis
-- I have a "base" experiment that's used as the template for other experiments... It has been perfected
-- I use Papermill to inject different parameters, and run it on Sophie using `tmux` so I can sleep while Sophie is workin' hard
-- maybe I can explain that I struggled with fast data loading
-  - Extracting all the PNGs into RAM in an decoded format takes up a lot of memory, so datasets are limited to a smaller size
-  - In the end, the decoding doesn't take up too much time, it's okay to load the images compressed and decode on-the-fly
-
-*What i've found:*
-- NNs are surprisingly good
-  - even smaller networks are actually able to memorize the backgrounds from glyphs and thus generalize worse
-  - so we need various augmentations and random backgrounds behind the glyphs to make it a challenge for the NN
-- with the "template" experiment, the predictions lie on the y=x line perfectly
-  - major hiccup was the "tail"... That one still pops up every once in a while, but augmentations help quite a bit
-- augmentations:
-  - AlbumentationsX, explain which augmentations have been done
-- Explain binned regression
-  - bins, logits, ...
-- There was also regression, but it had a huge "tail" that I didn't manage to remove
-- I played around with the learning rate, tried different schedulers
-- Explain that the NN has to be better than the worst-case, which is $"error" = 25 "units of x"$
-
 = Explanation of The Malleable Glyph
 
 This chapter introduces the _malleable glyph_, explains its purpose, the current state of research surrounding it, #TODO[...]
@@ -172,25 +124,24 @@ we explain all the important details that are necessary for decoding glyphs... T
 This chapter provides the technical "how-to" of your project, serving as a manual for your successor.
 
 #TODO[
-  - [] regression in machine learning
-  - binned regression
+  - [ ] regression in machine learning
+  - [ ] binned regression
 ]
 
-== Regression in Machine Learning
+== Neural Network Architecture
 
-Machine learning has many different fields, we can do regression, classification, clustering, ... ultimately, the malleable glyph computer vision problem is a regression problem because we are guessing a single scalar value x. Regression in mchine learning is the process of estimating a relationship between an dependent variable (in ML called a "label") and one or more independent variables. A simple case of a regression problem is estimating the price of a house depending on the area of the house's floor. A plot showing different houses and their price can be seen here:
+Here, i explain how the NN actually looks like.
 
 #figure(
-  rect([Nice graph lol], width: 50%, height: 5cm),
-  caption: [The horizontal axis (the independent variable) contains the house's flooring area, and the vertical axis (the dependent variable) contains the price of the house. We can see that as the house area increases, so does the price.],
-  // placement: top
+  rect([diagram of the NN], width: 100%, height: 10cm),
+  caption: [this diagram shows all the layers of the neural network and how they are connected.]
 )
 
-Now, if we were a house selling company, we would like to have some kind of automated system that can predict at which price we want to sell a house depending on its floor area. They can train a machine learning model on the data, and once the model has successfully learned the relationship between the floor area and the price, we can try to ask the model for the price of a house whose floor area it has never seen before. If the model is well-designed, it will predict a pretty accurate price for the house whose floor size it has not seen before.
-
-
+The neural network is parametrized.
 
 == Binned Regression
+
+Binned regression is a mix between classical regression and classification. Instead of having a single neuron in the output layer, we have multiple neurons on the output. Each of these neurons corresponds to a _centroid_. A centroid is simply a number that is represented by that neuron.
 
 The binned regression that is implemented in this project went through multiple iterations. Here, I will explain the first iteration stolen from Mohaned and then also the improved implementation and a possible explanation of why the previous one didn't work and why it needed an improvement.
 
@@ -233,6 +184,11 @@ The issue with the first iteration was that the neural network wasn't ...
     end: 150,
   ),
   caption: [blablabla],
+)
+
+#figure(
+  rect([visualization], width: 100%, height: 7cm),
+  caption: [A diagram of the last layer of the neural network, with the number of neurons corresponding to the value of $C$.]
 )
 
 == Development Enviromnment: `pip`, `poetry` and `uv`
@@ -385,3 +341,22 @@ class RunConfig(RunConfigBase):
 I also tried putting the parameters simply as global variables, but there was an issue with that approach. The task is reported to ClearML including all the hyperparameters... #TODO[clearml section?]
 // this is also related to Papermill...
 // TODO write a papermill section as well
+
+== The entire process of designing and running an experiment
+
+First of all, we need a bit of curiosity. We need to as ourselves a question that we want answered regarding computer vision and malleable glyphs. Examples of such questions include:
+
+- Does augmenting my training data help the NN to generalize better?
+- What will happen if we train the neural network on glyphs where $x in [0.0, 40.0] union [60.0, 100.0]$ and ask it to guess $x$ on glyphs that are in between the range $x in (40.0, 60.0)$? Will the NN interpolate or will it just guess values close to 40.0 and 60.0 depending to whichever the glyph in question is closer to #TODO[rephrase better]?
+- How does reducing the number of parameters in the network (e.g. creating a 'baby network') affect its ability to generalize versus its tendency to overfit?
+- Does the technique _hard sample mining_ reduce the loss on the few hard samples?
+
+Natural curiosity is key here and the more questions we get answered, the more questions we will be asking. After interestedly #TODO[maybe find a better word :P] asking questions, we need to form a hypothesis. A hypothesis is a proposed explanation. It explains why we think a certain phenomenon occurs. In the context of the questions above, hypotheses include but are not limited to:
+
+TODO[JUJ ja neviem ci toto tu ma byt... mozno len popisem jednotlive experimenty... ale tam je dizajn uzko spojeny s implementaciou samotneho experimentu...]
+
+== The centroid experiment
+
+== The gap experiment
+
+This experiment aims to answer questions garding the NN's capability to interpolate. 
