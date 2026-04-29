@@ -134,7 +134,7 @@ Here, i explain how the NN actually looks like.
 
 #figure(
   rect([diagram of the NN], width: 100%, height: 10cm),
-  caption: [this diagram shows all the layers of the neural network and how they are connected.]
+  caption: [this diagram shows all the layers of the neural network and how they are connected.],
 )
 
 The neural network is parametrized.
@@ -173,7 +173,15 @@ For a number of divisions $D = 5$, we would get a centroid count of $C = D + 1 =
   caption: [The distribution of centroids on the number line (first iteration). $C$ centroids are evenly distributed from 0 until 100.],
 )
 
-The issue with the first iteration was that the neural network wasn't ...
+The issue with the first iteration is a boundary effect. If the centroids live only inside $[0, 100]$, then a target near the edge, say $x approx 0$ or $x approx 100$, can only be represented by centroids on one side. When the model turns the bin probabilities back into a scalar by computing an expected value,
+
+$
+  hat(x) = sum_i p_i c_i,
+$
+
+the prediction is pulled toward the interior because there are no centroids outside the interval to balance the distribution. In practice, this creates worse errors at the edges than in the middle of the range.
+
+By extending the centroid set to $[-Delta, 100 + Delta]$, the model gets one extra centroid on each side of the interval. That gives it room to place probability mass slightly outside the valid range, so the weighted average can still land near the boundary instead of being biased inward. After decoding, the final value is clamped back to $[0, 100]$, but the extra centroids help the regression behave more symmetrically near both ends.
 
 #TODO[i confirmed by experiment `experiment-centroid-distribution.ipynb` that indeed the NN is performing worse with the first version of the centroids... Now... this is an experiment, so do I put it into the next part? Or do I mention it here? The actual explanation of binned regression belongs here but there's also an experiment that provided me with the information that the version 2 is better and idk where to mention that...]
 
@@ -188,7 +196,7 @@ The issue with the first iteration was that the neural network wasn't ...
 
 #figure(
   rect([visualization], width: 100%, height: 7cm),
-  caption: [A diagram of the last layer of the neural network, with the number of neurons corresponding to the value of $C$.]
+  caption: [A diagram of the last layer of the neural network, with the number of neurons corresponding to the value of $C$.],
 )
 
 == Development Enviromnment: `pip`, `poetry` and `uv`
@@ -342,7 +350,7 @@ I also tried putting the parameters simply as global variables, but there was an
 // this is also related to Papermill...
 // TODO write a papermill section as well
 
-== The entire process of designing and running an experiment
+== How Do I Design And Run My Own Experiment?
 
 First of all, we need a bit of curiosity. We need to as ourselves a question that we want answered regarding computer vision and malleable glyphs. Examples of such questions include:
 
@@ -353,10 +361,40 @@ First of all, we need a bit of curiosity. We need to as ourselves a question tha
 
 Natural curiosity is key here and the more questions we get answered, the more questions we will be asking. After interestedly #TODO[maybe find a better word :P] asking questions, we need to form a hypothesis. A hypothesis is a proposed explanation. It explains why we think a certain phenomenon occurs. In the context of the questions above, hypotheses include but are not limited to:
 
-TODO[JUJ ja neviem ci toto tu ma byt... mozno len popisem jednotlive experimenty... ale tam je dizajn uzko spojeny s implementaciou samotneho experimentu...]
+#TODO[JUJ ja neviem ci toto tu ma byt... mozno len popisem jednotlive experimenty... ale tam je dizajn uzko spojeny s implementaciou samotneho experimentu...]
 
-== The centroid experiment
+After that, it's time to design an experiment. An experiment is programmed inside a Jupyter notebook. I recommend that you simply create a copy of the Jupyter notebook located at `notebooks/experiment-base.ipynb` and rename the notebook to something like `experiment-my-own.ipynb` that explains your experiment. Of course you can also create your own notebook as the base of your experiment, but you can do that once you're more comfortable with how the framework works. For now, stick to creating experiments by cloning the base experiment notebook. After that, you're free to add new parameters to the beginning of the notebook and using them inside the notebook.
 
-== The gap experiment
+== The Centroid Experiment
 
-This experiment aims to answer questions garding the NN's capability to interpolate. 
+In this experiment, I am trying to answer the question whether it's better to have $C$ binned regression centroids distributed on the interval $[0.0, 100.0]$, or whether it's better to have $C + 2$ centroids withthe two extra centroids located outside of the interval at $-Delta_C$ and $100 + Delta_C$. The reason why I designed this experiment was that when I was trying to create the base experiment, I was having trouble with getting a completely straight line. The line had always these small "tails" at the ends.
+
+#figure(
+  stack(
+    image("fig/graphs/truth-vs-x-centroids.svg", width: 50%),
+    image("fig/graphs/truth-vs-x-zoomed-centroids.svg", width: 50%),
+    dir: ltr,
+  ),
+  caption: [Plot (and its zoomed version from x=0..10) that has on the horizontal axis the true value of $x$ and on the vertical axis the predicted value of $x$ by the network. It's evaluated on 2500 random samples from the test set (the NN hasn't seen any of the samples). We can see the imperfect endings at $x=0.0$ and $x=100.0$.],
+) <fig-truth-vs-x-centroids>
+
+Me and prof. Herout hypothesized that it could be because the centroids at the edge have a smaller saying in what the final output of the network is, due to the way in which the NN calculates the final output. If we have a sample of $x=0.0$, the centroid at $x=0.0$ can have a very high output value, however, it is highly disadvantaged compared to the other centroids. As soon as one of the other centroids has a non-zero value, there is *no* way for the $x=0$ centroid to completely pull the final output of the NN to zero. It will always get pulled a bit away from $x=0$. We can actually see this in the zoomed plot (right side) in @fig-truth-vs-x-centroids, as at $x=0.0$, the predicted value of $x$ is actually _pulled_ by other bins away from 0, we can see that the tail at x=[0..1] is actually curved in the direction that represents the prediction of higher values $x$ than the real value, supporting this hypothesis.
+
+#TODO[
+  Maybe a good way to explain this is to show what happens when the last centroid is at 5 and 95. The network is physically incapable of predicting values below 5 and above 95, because of the weighted average principle. When we have centroids at 0 and 100, the network is capable, but the output is usually pulled in by the other bins a little bit.
+]
+
+#figure(
+  // image("fig/graphs/loss-vs-x-centroids.png", width: 80%),
+  // image("fig/graphs/loss-vs-x-centroids.png", width: 80%),
+  rect(
+    [graph showing loss vs x. #TODO[maybe unnecessary as the previous graph explains it pretty well...]],
+    width: 100%,
+    height: 8cm,
+  ),
+  caption: [Corresponds to @fig-truth-vs-x-centroids, and is just a different way to look at the data. Shows the loss on the vertical axis and the value of $x$ on the horizontal axis. As we can see, with the $C$ centroids evenly distributed on the interval $[0.0; 100.0]$, we have large losses at the edges of the graph and relatively small losses (in comparison) in the middle.],
+)
+
+== The Gap Experiment
+
+This experiment aims to answer questions garding the NN's capability to interpolate.
