@@ -171,3 +171,9 @@ def show_datasets(
 
     plt.tight_layout()
     plt.show()
+
+
+def split_samples_to_images_and_labels(samples: list[LoadedSample]) -> tuple[list[np.ndarray], list[float]]:
+    images = [s.image for s in samples]
+    labels = [s.label for s in samples]
+    return images, labels
