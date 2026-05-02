@@ -285,7 +285,7 @@ The library is published on PyPI #footnote[https://pypi.org/project/mglyph/] und
 
 When one wishes to create their own malleable glyphs, it's best to start at the tutorial that's linked in the repository's `README.md` file. The tutorial showcases what's possible, illustrating many interesting ideas and techniques. After reading the tutorial, one can tweak some parameters to see how the glyphs react.
 
-At the core of any glyph is a _drawer_ function. In `mglyph`, `Drawer` is a callable type alias with the following signature:
+At the core of any glyph is a _drawer_ function. In `mglyph`, `Drawer` is a `Callable` a.k.a. function with the following signature:
 
 ```py
 type Drawer = Callable[[float, Canvas], None]
@@ -321,7 +321,9 @@ The exact mechanisms behind ```py show()``` for the purposes of this work are no
   placement: top,
 )
 
-== Creating Datasets
+#TODO[much more needs to be explained about the library... we need some basic glyph creation examples maybe]
+
+== Inside The `.mglyph` Dataset File
 
 I would define a dataset as a collection of samples that can be used to train, validate, and test a neural network in some way. I decided to represent a dataset as a single file with the extension `.mglyph` that contains all the samples that can be used by the person designing the experiment. It's essentially just a ZIP file disguised under a different file extension. The structure of the ZIP file is as follows:
 
@@ -338,7 +340,11 @@ It contains a file called `manifest.json`, which contains all the information ab
 
 Let's dig a little bit into the `manifest.json` file. An example of how such a file might look like is shown here:
 
-#raw-annot((line: 2, symb: [1], label: <code-manifest-name>))
+#raw-annot(
+  (line: 2, symb: [1], label: <code-manifest-name>),
+  (line: 3, symb: [2], label: <code-manifest-creation-time>),
+  (line: 4, symb: [3], label: <code-manifest-samples>),
+)
 ```json
 {
   "name": "Simple Star",
@@ -348,27 +354,26 @@ Let's dig a little bit into the `manifest.json` file. An example of how such a f
       {
         "x": 12.34,
         "filename": "0000.png",
-        "metadata": {}
+        "metadata": {
+          "shape": "triangle"
+        }
       }
     ],
     "1": [
       {
         "x": 56.78,
         "filename": "0001.png",
-        "metadata": {}
+        "metadata": {
+          "shape": "circle"
+        }
       }
     ]
   }
 }
 ```
 
-The JSON contains the name of the dataset, the time the dataset was created as a ISO 8601 timestamp, and a JSON object called "samples" which contains key:value pairs that represent so-called "splits". A "split" is a kind of a folder inside a dataset. We can divide the samples into these "folders" and then access the samples in each folder individually. A sample has to always be in one folders. Putting a single sample into multiple splits is not supported, but there isn't really a reason for us to do so, as the splits are usually used to separate training and testing data, and these two groups are mutually exclusive (they shouldn't have any overlap). Then, every split is a JSON list that contains objects of type ```py ManifestSample```. This object is defined in Python in the following way:
+At line @code-manifest-name, we can see inside the JSON the name of the dataset. This name can be as long as you need, and should reflect exactly what's inside the dataset. On line @code-manifest-creation-time, we store the time the dataset was created. This might be helpful if you create a dataset and forget about it and then later need to pinpoint exactly when and why you created it in the first place. It's stored as an ISO 8601 timestamp. Next, at line @code-manifest-samples, we have a JSON object called "samples" which contains key-value pairs that represent so-called _splits_. A split is a kind of a folder inside a dataset. We can divide the samples into these "folders" and then access the samples in each folder individually. A sample always belongs to one and only one split. Putting a single sample into multiple splits is not supported, but there isn't really a reason for us to do so, as the splits are usually used to separate training and testing data, and these two groups are mutually exclusive (they shouldn't have any overlap). Then, every split is a JSON list that contains objects of type ```py ManifestSample```. This object is defined in Python in the following way:
 
-#raw-annot(
-  (line: 2, symb: [1], label: <code-manifest-sample-x>),
-  (line: 3, symb: [2], label: <code-manifest-sample-filename>),
-  (line: 4, symb: [3], label: <code-manifest-sample-metadata>),
-)
 ```py
 class ManifestSample(BaseModel):
     x: float
@@ -376,7 +381,48 @@ class ManifestSample(BaseModel):
     metadata: dict
 ```
 
-Note that I used the Pydantic Python library for defining the manifest. This is super handy because Pydantic takes care of all the JSON parsing and validation and makes everything in the code type-safe (i get nice hints in my IDE when working with typed objects instead of classic Python ```py dict```s). The line @code-manifest-sample-x shows
+Note that I used the Pydantic Python library for defining the manifest. This is super handy because Pydantic takes care of all the JSON parsing and validation and makes everything in the code type-safe (i get nice hints in my IDE when working with typed objects instead of classic Python ```py dict```s). Every sample that is in the dataset has its instance of ```py ManifestSample``` when the dataset is loaded. This sample is composed of the label of the sample `x`, the `filename` of the file where the sample located within the `.mglyph` dataset file, and a `metadata` dictionary. This is a key-value based structure where the creator of the dataset can embed special data about each glyph. This can be useful for example when your dataset contains multiple types of glyphs and you need to filter them out at training time or testing time.
+
+== Creating a New Dataset
+
+So, you decided that you want to build your own dataset. The first prerequisite is having a glyph that you wanna put into the dataset. When I am talking about a glyph, I am in reality talking about a `Drawer`. You need a `Drawer`. After you have a `Drawer` that can successfully draw a glyph in a reasonable about of time, you can go onto the next step. You can create a dataset in two ways.
+
+=== Creating Dual Datasets
+
+The first (and much simpler) way to create a dataset is by invoking the ```py create_and_export_dual_dataset()``` function from the `mglyph_ml.export` module. This function handles the creation of a very standard dataset type, which I called the _dual_ dataset. It's called _dual_ because it contains two splits, named "0" and "1". The reason why this type of dataset is used often is that we usually have one set of glyphs which are used for the training of the NN, and we have a separate set of glyphs which are used for the testing (for more info see @section-train-val-test). We simply provide the function with the `Drawer`, tweak a couple of basic parameters, and we have a new dataset ready to be used in an experiment:
+
+```py
+create_and_export_dual_dataset(
+    name="Varying Star 1k Dual",
+    path=Path("data/varying-star-1k-dual.mglyph"),
+    drawer=varying_star,
+    n_samples=10_000,
+)
+```
+
+This single function creates the dataset at the specified path, using the specified drawer, and generates `n_samples` samples in _each_ split (so in this case, 20 000 samples get generated, 10 000 in each split). It's also important to note that this function doesn't generate the samples uniformly across the entire interval $[0.0, 100.0]$. Instead, it generates `n_samples` random floating point numbers between 0 and 100 and generates the glyphs from these values. After a discussion with my supervisor, we concluded that this method is better because it gives the NN more variety in the data. Instead of only seeing values like 0.1, 0.2, 0.3, 0.4, ..., it sees values like 0.1032, 0.1563, 0.2315, ... .
+
+=== Creating Custom Datasets
+
+If the dual dataset doesn't fulfill your needs, no worries! You can also create a dataset completely manually using a builder pattern. Here's a code sample of creating a simple dataset manually:
+
+```py
+dataset = create_dataset(name="Single-split Simple Star Uniform")
+
+xvalues = np.linspace(start=0.0, stop=100.0, num=10_000)
+
+for x in xvalues_train:
+    dataset.add_sample(drawer, x, split="main")
+
+dataset.export(path=Path("single-split-simple-star-uniform.mglyph"))
+```
+
+
+=== Training vs. Validation vs. Testing <section-train-val-test>
+
+#TODO[maybe separate section? idk where to put this] \
+Just a quick reminder on what the difference between a _training_, _validation_ and _test_ set is. In the context of malleable glyphs, we need a set of glyphs that are used to train the neural network. We can also take glyphs from the same set to kind of "steer" the training in the right direction. An example of this "steering" would be to check every $n$ steps or every $m$ epochs how the training is going by letting the neural network predict a couple labels. We could then use this information during the training to either reduce the learning rate, change the optimizer, or make some other decisions. This is totally okay. However, what is not okay is using _any_ of the data that has been used in some way during the training (even if the NN hasn't actually been trained on the data but it was only used for this 'steering'), we cannot use this data at the end of the training to validate how well a NN performs. This is why we need 2 sets of glyphs. The second split is used as a "testing" set at the end of the training to see how well the NN performs and this is the set that gives us information about how well the experient went.
+
 
 #TODO[
   - [ ] explain how the dataset is structured
