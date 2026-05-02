@@ -1,3 +1,17 @@
+#import "lib.typ": csym
+
+#raw-annot((line: 1, symb: [A], label: <code-line-explanation>))
+```py
+def bla() -> Int:
+    daco()
+    daco_dalsie()
+    return 123
+```
+
+The line @code-line-explanation shows something something.
+
+
+
 = Plan
 
 *Explain malleable glyphs:*

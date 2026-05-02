@@ -1,10 +1,11 @@
 #import "template.typ": *
-#import "lib.typ": number-line
+#import "lib.typ": init-raw-annot, number-line, raw-annot
 #import "@preview/fletcher:0.5.8" as fletcher: diagram, edge, node, shapes
 #import "@preview/cheq:0.3.0": checklist
 #import "@preview/cetz:0.5.0": canvas, draw
 
 #show: checklist
+#show: init-raw-annot
 
 = Introduction
 
@@ -72,54 +73,9 @@ In other words, glyphs containing so-called _orders_ are *not* considered mallea
   caption: [An example of uneligible glyphs. The clock has multiple hands (orders), and thus, not a malleable glyph. The textual glyph has orders in the text itself -- the decimal numerical system, like any other numerical system, inherently contains orders.],
 ) <fig-bad-glyphs>
 
-== The `mglyph` Python Library
-
-The manual creation of malleable glyphs might prove challenging. Generating and packaging thousands of images in a strict output format is inherently repetitive and labor-intensive. One of the primary motivations behind the `mglyph` Python library was therefore to abstract this complexity away from the glyph designer and make the process of creating and distributing glyphs as frictionless as possible.
-
-The library is published on PyPI #footnote[https://pypi.org/project/mglyph/] under the name `mglyph`. It is open-source, and its source code is available on GitHub #footnote[https://github.com/adamherout/mglyph]. In practice, it serves as a framework for designing, generating, and distributing malleable glyphs. Its core is implemented in Python, a widely adopted language with which many developers are already familiar. Python's syntax also offers the flexibility required for a library of this kind.
-
-When one wishes to create their own malleable glyphs, it's best to start at the tutorial that's linked in the repository's `README.md` file. The tutorial showcases what's possible, illustrating many interesting ideas and techniques. After reading the tutorial, one can tweak some parameters to see how the glyphs react.
-
-At the core of any glyph is a _drawer_ function. In `mglyph`, `Drawer` is a callable type alias with the following signature:
-
-```py
-type Drawer = Callable[[float, Canvas], None]
-```
-
-One possible implementation may take the following form:
-
-```py
-import mglyph as mg
-
-def simple_circle(x: float, canvas: mg.Canvas) -> None:
-    radius = mg.lerp(x, 0, canvas.xsize / 2)
-    canvas.circle(center=canvas.center, radius=radius, color='red')
-```
-
-A `mg.Drawer` takes two parameters: a `float` and an `mg.Canvas`. In Python, both arguments are passed by assignment (object reference): `x` is an immutable numeric value, while `canvas` is a mutable object that the function can draw into. In this example, the radius is computed by linearly interpolating $x in [0.0, 100.0]$ onto $[0.0, "canvas.xsize" / 2]$. The canvas size is 2.0, but it is better to express dimensions relatively. This makes the design intent clearer and keeps the glyph definition readable. Here, the circle radius spans from 0.0 to half of the canvas width (`xsize`), so it grows from a point to edge-to-edge.
-
-Now that the `mg.Drawer` (```py simple_circle()```) is defined, we need a way to see what the glyph actually looks like with different values of $x$. Thankfully, the creators of the `mglyph` library provided multiple ways to visualize the glyphs. One of the most important functions is the ```py show()``` function. It allows us to see what the glyph looks like with different values of $x$ passed down to the function. It accepts many parameters, but here are the two most important ones:
-
-```py
-def show(
-    drawer: mg.Drawer | list[mg.Drawer] | list[list[mg.Drawer]],
-    x: int | float | list[float] | list[int] | list[list[float]] |
-       list[list[int]] = [5, 25, 50, 75, 95],
-)
-```
-
-The exact mechanisms behind ```py show()``` for the purposes of this work are not important. However, it is important to understand how the `mg.Drawer` is used by the `mglyph` library.
-
-#figure(
-  image("fig/diagrams/show-function.drawio.svg", width: 100%),
-  caption: [Diagram of the inner workings of the ```py show()``` function from the `mglyph` library. For every $x$ that gets passed into ```py show()```, it instantiates a new `mg.Canvas`, and passes it down to the ```py drawer()``` so that it can draw the glyph based on the passed argument `x`. #TODO[this diagram needs shadows and nicer arrows... make it nicer u know]],
-  placement: top,
-)
-
-
 = Machine Learning Fundamentals for Glyph Decoding
 
-we explain all the important details that are necessary for decoding glyphs... There are an infinite amount of ways that we can train a NN to decode glyphs. For example we could train a neural network on pairs like it has been done by Mohaned Anene
+we explain all the important details that are necessary for decoding glyphs... There are an infinite amount of ways that we can train a NN to decode glyphs. For example we could train a neural network on pairs like it has been done by #cite(<BibMohanedPairwise>, form: "prose") dsddsd
 
 This chapter provides the technical "how-to" of your project, serving as a manual for your successor.
 
@@ -143,7 +99,7 @@ The neural network is parametrized.
 
 Binned regression is a mix between classical regression and classification. Instead of having a single neuron in the output layer, we have multiple neurons on the output. Each of these neurons corresponds to a _centroid_. A centroid is simply a number that is represented by that neuron.
 
-The binned regression that is implemented in this project went through multiple iterations. Here, I will explain the first iteration stolen from Mohaned and then also the improved implementation and a possible explanation of why the previous one didn't work and why it needed an improvement.
+The binned regression that is implemented in this project went through multiple iterations. Here, I will explain the first iteration stolen from Mohaned #cite(<BibMohanedPairwise>) and then also the improved implementation and a possible explanation of why the previous one didn't work and why it needed an improvement.
 
 The first implementation looked something like this:
 
@@ -317,6 +273,123 @@ Explain the trouble I went through with getting the damn straight line to work. 
 
 The second attempt as binned regression.
 
+= Creating High Quality Datasets For Experiments
+
+This chapter explains the basics of the `mglyph` library, and later explains how the library can be used for the creation of high quality datasets that can be used in experiments.
+
+== The `mglyph` Python Library
+
+The manual creation of malleable glyphs might prove challenging. Generating and packaging thousands of images in a strict output format is inherently repetitive and labor-intensive. One of the primary motivations behind the `mglyph` Python library was therefore to abstract this complexity away from the glyph designer and make the process of creating and distributing glyphs as frictionless as possible.
+
+The library is published on PyPI #footnote[https://pypi.org/project/mglyph/] under the name `mglyph`. It is open-source, and its source code is available on GitHub #footnote[https://github.com/adamherout/mglyph]. In practice, it serves as a framework for designing, generating, and distributing malleable glyphs. Its core is implemented in Python, a widely adopted language with which many developers are already familiar. Python's syntax also offers the flexibility required for a library of this kind.
+
+When one wishes to create their own malleable glyphs, it's best to start at the tutorial that's linked in the repository's `README.md` file. The tutorial showcases what's possible, illustrating many interesting ideas and techniques. After reading the tutorial, one can tweak some parameters to see how the glyphs react.
+
+At the core of any glyph is a _drawer_ function. In `mglyph`, `Drawer` is a callable type alias with the following signature:
+
+```py
+type Drawer = Callable[[float, Canvas], None]
+```
+
+One possible implementation of this callable type may take the following form:
+
+```py
+import mglyph as mg
+
+def simple_circle(x: float, canvas: mg.Canvas) -> None:
+    radius = mg.lerp(x, 0, canvas.xsize / 2)
+    canvas.circle(center=canvas.center, radius=radius, color='red')
+```
+
+A `mg.Drawer` takes two parameters: a `float` and an `mg.Canvas`. In Python, both arguments are passed by assignment (object reference): `x` is an immutable numeric value, while `canvas` is a mutable object that the function can draw into. In this example, the radius is computed by linearly interpolating $x in [0.0, 100.0]$ onto $[0.0, "canvas.xsize" / 2]$. The canvas size is 2.0, but it is better to express dimensions relatively. This makes the design intent clearer and keeps the glyph definition readable. Here, the circle radius spans from 0.0 to half of the canvas width (`xsize`), so it grows from a point to edge-to-edge.
+
+Now that the `mg.Drawer` (```py simple_circle()```) is defined, we need a way to see what the glyph actually looks like with different values of $x$. Thankfully, the creators of the `mglyph` library provided multiple ways to visualize the glyphs. One of the most important functions is the ```py show()``` function. It allows us to see what the glyph looks like with different values of $x$ passed down to the function. It accepts many parameters, but here are the two most important ones:
+
+```py
+def show(
+    drawer: mg.Drawer | list[mg.Drawer] | list[list[mg.Drawer]],
+    x: int | float | list[float] | list[int] | list[list[float]] |
+       list[list[int]] = [5, 25, 50, 75, 95],
+)
+```
+
+The exact mechanisms behind ```py show()``` for the purposes of this work are not important. However, it is important to understand how the `mg.Drawer` is used by the `mglyph` library.
+
+#figure(
+  image("fig/diagrams/show-function.drawio.svg", width: 100%),
+  caption: [Diagram of the inner workings of the ```py show()``` function from the `mglyph` library. For every $x$ that gets passed into ```py show()```, it instantiates a new `mg.Canvas`, and passes it down to the ```py drawer()``` so that it can draw the glyph based on the passed argument `x`. #TODO[this diagram needs shadows and nicer arrows... make it nicer u know]],
+  placement: top,
+)
+
+== Creating Datasets
+
+I would define a dataset as a collection of samples that can be used to train, validate, and test a neural network in some way. I decided to represent a dataset as a single file with the extension `.mglyph` that contains all the samples that can be used by the person designing the experiment. It's essentially just a ZIP file disguised under a different file extension. The structure of the ZIP file is as follows:
+
+// idk what the 't' stands for but it provides the exact syntax highlighting I need lol
+```t
+dataset.mglyph
+├── manifest.json
+├── 0000.png
+├── 0001.png
+└── ...
+```
+
+It contains a file called `manifest.json`, which contains all the information about the dataset, the author of the dataset, and the glyphs contained in the dataset, and it also contains all the glyphs rendered as PNG files numbered in a fashion starting from 0000.png (the number of digits depends on the total number of glyphs, so for datasets containing less glyphs, the number can be 2 or 3 digits, and for datasets containing 100 000 samples, it will be 6 digits).
+
+Let's dig a little bit into the `manifest.json` file. An example of how such a file might look like is shown here:
+
+#raw-annot((line: 2, symb: [1], label: <code-manifest-name>))
+```json
+{
+  "name": "Simple Star",
+  "creation_time": "2026-04-15T10:30:00",
+  "samples": {
+    "0": [
+      {
+        "x": 12.34,
+        "filename": "0000.png",
+        "metadata": {}
+      }
+    ],
+    "1": [
+      {
+        "x": 56.78,
+        "filename": "0001.png",
+        "metadata": {}
+      }
+    ]
+  }
+}
+```
+
+The JSON contains the name of the dataset, the time the dataset was created as a ISO 8601 timestamp, and a JSON object called "samples" which contains key:value pairs that represent so-called "splits". A "split" is a kind of a folder inside a dataset. We can divide the samples into these "folders" and then access the samples in each folder individually. A sample has to always be in one folders. Putting a single sample into multiple splits is not supported, but there isn't really a reason for us to do so, as the splits are usually used to separate training and testing data, and these two groups are mutually exclusive (they shouldn't have any overlap). Then, every split is a JSON list that contains objects of type ```py ManifestSample```. This object is defined in Python in the following way:
+
+#raw-annot(
+  (line: 2, symb: [1], label: <code-manifest-sample-x>),
+  (line: 3, symb: [2], label: <code-manifest-sample-filename>),
+  (line: 4, symb: [3], label: <code-manifest-sample-metadata>),
+)
+```py
+class ManifestSample(BaseModel):
+    x: float
+    filename: str
+    metadata: dict
+```
+
+Note that I used the Pydantic Python library for defining the manifest. This is super handy because Pydantic takes care of all the JSON parsing and validation and makes everything in the code type-safe (i get nice hints in my IDE when working with typed objects instead of classic Python ```py dict```s). The line @code-manifest-sample-x shows
+
+#TODO[
+  - [ ] explain how the dataset is structured
+    - [ ] splits
+    - [ ] metadata...
+    - [ ] loading them into the code...
+    - [ ] manifest (JSON)
+    - [ ] explain that we can also embed metadata into each sample (if we want to)
+  - [ ] what makes a dataset reusable...
+  - [ ] link to some tutorials... we can't explain everything about the library here
+
+]
+
 = Experiments And Results
 
 The whole point of this thesis was to find the limitations of computer vision in conjunction with the malleable glyphs. For running experiments, i created a series of Jupyter notebooks located at `notebooks/` named `experiment-*.ipynb`.
@@ -365,7 +438,17 @@ Natural curiosity is key here and the more questions we get answered, the more q
 
 After that, it's time to design an experiment. An experiment is programmed inside a Jupyter notebook. I recommend that you simply create a copy of the Jupyter notebook located at `notebooks/experiment-base.ipynb` and rename the notebook to something like `experiment-my-own.ipynb` that explains your experiment. Of course you can also create your own notebook as the base of your experiment, but you can do that once you're more comfortable with how the framework works. For now, stick to creating experiments by cloning the base experiment notebook. After that, you're free to add new parameters to the beginning of the notebook and using them inside the notebook.
 
-== The Centroid Experiment
+== Experimenting With Centroids
+
+#TODO[also explain that i did experiments to determine an optimal number of centroids... 3 is too little, 5 is ok, 10 is also ok, 20 is also ok... i'm sticking with less because the NN is smaller, simpler, and there's no need for more centroids]
+
+#TODO[
+  another experiment is:
+  - Stred gap-u medzi centroidmi = ok?
+  - Stred gap-u rovno na centroide = shit?
+
+  to je hypoteza, mozeme otestovat a zistit ci naozaj ked je stred gap-u medzi centroidmi tak to bude lepsie ako ked bude stred rovno na centroide
+]
 
 In this experiment, I am trying to answer the question whether it's better to have $C$ binned regression centroids distributed on the interval $[0.0, 100.0]$, or whether it's better to have $C + 2$ centroids withthe two extra centroids located outside of the interval at $-Delta_C$ and $100 + Delta_C$. The reason why I designed this experiment was that when I was trying to create the base experiment, I was having trouble with getting a completely straight line. The line had always these small "tails" at the ends.
 
@@ -375,7 +458,11 @@ In this experiment, I am trying to answer the question whether it's better to ha
     image("fig/graphs/truth-vs-x-zoomed-centroids.svg", width: 50%),
     dir: ltr,
   ),
-  caption: [Plot (and its zoomed version from x=0..10) that has on the horizontal axis the true value of $x$ and on the vertical axis the predicted value of $x$ by the network. It's evaluated on 2500 random samples from the test set (the NN hasn't seen any of the samples). We can see the imperfect endings at $x=0.0$ and $x=100.0$.],
+  caption: [
+    Plot (and its zoomed version from x=0..10) that has on the horizontal axis the true value of $x$ and on the vertical axis the predicted value of $x$ by the network. It's evaluated on 2500 random samples from the test set (the NN hasn't seen any of the samples). We can see the imperfect endings at $x=0.0$ and $x=100.0$.
+
+    #TODO[maybe increase the size of the font in the graphs here]
+  ],
 ) <fig-truth-vs-x-centroids>
 
 Me and prof. Herout hypothesized that it could be because the centroids at the edge have a smaller saying in what the final output of the network is, due to the way in which the NN calculates the final output. If we have a sample of $x=0.0$, the centroid at $x=0.0$ can have a very high output value, however, it is highly disadvantaged compared to the other centroids. As soon as one of the other centroids has a non-zero value, there is *no* way for the $x=0$ centroid to completely pull the final output of the NN to zero. It will always get pulled a bit away from $x=0$. We can actually see this in the zoomed plot (right side) in @fig-truth-vs-x-centroids, as at $x=0.0$, the predicted value of $x$ is actually _pulled_ by other bins away from 0, we can see that the tail at x=[0..1] is actually curved in the direction that represents the prediction of higher values $x$ than the real value, supporting this hypothesis.
@@ -395,6 +482,12 @@ Me and prof. Herout hypothesized that it could be because the centroids at the e
   caption: [Corresponds to @fig-truth-vs-x-centroids, and is just a different way to look at the data. Shows the loss on the vertical axis and the value of $x$ on the horizontal axis. As we can see, with the $C$ centroids evenly distributed on the interval $[0.0; 100.0]$, we have large losses at the edges of the graph and relatively small losses (in comparison) in the middle.],
 )
 
+== The Centroid Experiment 2
+
+
+
 == The Gap Experiment
 
 This experiment aims to answer questions garding the NN's capability to interpolate.
+
+= Results, Conclusion And Future Work
