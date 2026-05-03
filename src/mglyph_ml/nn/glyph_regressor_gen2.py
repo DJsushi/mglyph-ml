@@ -1,7 +1,10 @@
 from torch import nn
+import torch
+
+from mglyph_ml.nn.base import GlyphPredictorBase
 
 
-class GlyphRegressor(nn.Module):
+class GlyphRegressor(GlyphPredictorBase):
     def __init__(self, image_resolution: tuple[int, int]):
         super().__init__()
 
@@ -35,3 +38,15 @@ class GlyphRegressor(nn.Module):
         x = self.features(x)
         x = self.regressor(x)
         return x
+
+    def predict(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Predict glyph labels (raw network output).
+
+        Args:
+            x: Input tensor of shape (batch_size, 3, H, W)
+
+        Returns:
+            Tensor of shape (batch_size,) with raw predictions
+        """
+        return self(x).view(-1)

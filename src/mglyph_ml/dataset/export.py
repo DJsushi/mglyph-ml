@@ -105,7 +105,7 @@ def create_dataset(name: str, creation_time: datetime = datetime.now()) -> _Data
     return _DatasetBuilder(name=name, creation_time=creation_time)
 
 
-def export_dataset(
+def create_and_export_dual_dataset(
     name: str,
     path: Path,
     drawer: Drawer,

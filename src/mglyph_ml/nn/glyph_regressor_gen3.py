@@ -1,7 +1,10 @@
 from torch import nn
+import torch
+
+from mglyph_ml.nn.base import GlyphPredictorBase
 
 
-class GlyphRegressorGen3(nn.Module):
+class GlyphRegressorGen3(GlyphPredictorBase):
     """
     Stronger plain regressor (no binning) for normalized labels in [0, 1].
 
@@ -52,3 +55,15 @@ class GlyphRegressorGen3(nn.Module):
         x = self.features(x)
         x = self.regressor(x)
         return x
+
+    def predict(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Predict normalized labels in [0, 1].
+
+        Args:
+            x: Input tensor of shape (batch_size, 3, H, W)
+
+        Returns:
+            Tensor of shape (batch_size,) with predictions in [0, 1]
+        """
+        return self(x).view(-1)

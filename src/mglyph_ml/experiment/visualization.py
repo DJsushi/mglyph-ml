@@ -12,9 +12,18 @@ def show_truth_vs_pred_graph(
     dataset,
     device: str,
     ax=None,
+    x_min=None,
+    x_max=None,
+    y_min=None,
+    y_max=None,
+    dot_size: int = 12,
 ):
     """Plot ground-truth vs predicted x and return (fig, ax).
     The caller controls rendering and closing.
+
+    Args:
+        x_min, x_max: Optional bounds for the x-axis (ground truth).
+        y_min, y_max: Optional bounds for the y-axis (predicted).
     """
     model.eval()
 
@@ -33,8 +42,8 @@ def show_truth_vs_pred_graph(
             img_tensor = img_tensor.unsqueeze(0).float().to(device, non_blocking=True)
             label_value = float(label)
 
-            logits = model(img_tensor)
-            pred_value = float(model.logits_to_labels(logits).squeeze(0).item())
+            pred_tensor = model.predict(img_tensor)
+            pred_value = float(pred_tensor.squeeze(0).item())
 
             x_true.append(label_value)
             x_pred.append(pred_value)
@@ -47,7 +56,7 @@ def show_truth_vs_pred_graph(
     else:
         fig = ax.figure
 
-    ax.scatter(x_true, x_pred, alpha=0.5, s=12)
+    ax.scatter(x_true, x_pred, alpha=0.5, s=dot_size)
 
     min_x = float(min(np.min(x_true), np.min(x_pred)))
     max_x = float(max(np.max(x_true), np.max(x_pred)))
@@ -65,6 +74,20 @@ def show_truth_vs_pred_graph(
     ax.set_title(title)
     ax.legend()
     ax.set_aspect("equal", adjustable="box")
+
+    # Apply zoom limits if provided
+    if x_min is not None or x_max is not None:
+        current_x_min, current_x_max = ax.get_xlim()
+        ax.set_xlim(
+            x_min if x_min is not None else current_x_min, x_max if x_max is not None else current_x_max
+        )
+
+    if y_min is not None or y_max is not None:
+        current_y_min, current_y_max = ax.get_ylim()
+        ax.set_ylim(
+            y_min if y_min is not None else current_y_min, y_max if y_max is not None else current_y_max
+        )
+
     fig.tight_layout()
 
     return fig, ax
@@ -99,12 +122,10 @@ def show_loss_vs_x_graph(
             img_tensor = img_tensor.unsqueeze(0).float().to(device, non_blocking=True)
             label_value = float(label)
 
-            logits = model(img_tensor)
-            pred = model.logits_to_labels(logits).squeeze(0)
-
+            pred_tensor = model.predict(img_tensor).squeeze(0)
             label_tensor = torch.tensor([label_value], dtype=torch.float32, device=device)
-            pred_tensor = pred.view(1)
-            loss = loss_fn(pred_tensor, label_tensor).item()
+            pred_tensor_1d = pred_tensor.view(1)
+            loss = loss_fn(pred_tensor_1d, label_tensor).item()
 
             x_vals.append(label_value)
             losses_per_sample.append(loss)

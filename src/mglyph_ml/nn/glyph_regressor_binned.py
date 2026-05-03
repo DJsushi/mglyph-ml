@@ -3,6 +3,8 @@ from typing import Literal, cast
 import torch
 from torch import nn
 
+from mglyph_ml.nn.base import GlyphPredictorBase
+
 
 def _scaled_channels(base_channels: int, width_mult: float) -> int:
     """Scale channels with width multiplier and round to a hardware-friendly multiple."""
@@ -10,7 +12,7 @@ def _scaled_channels(base_channels: int, width_mult: float) -> int:
     return max(8, scaled)
 
 
-class BinnedGlyphRegressor(nn.Module):
+class BinnedGlyphRegressor(GlyphPredictorBase):
     """
     Regresses x via classification over fixed-width bins.
 
@@ -98,3 +100,16 @@ class BinnedGlyphRegressor(nn.Module):
         bin_centers_x = cast(torch.Tensor, self.bin_centers_x)
         probs = torch.softmax(logits, dim=1)
         return torch.clamp(torch.sum(probs * bin_centers_x, dim=1), 0.0, 100.0)
+
+    def predict(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Predict labels in [0, 100].
+
+        Args:
+            x: Input tensor of shape (batch_size, 3, H, W)
+
+        Returns:
+            Tensor of shape (batch_size,) with predictions in [0, 100]
+        """
+        logits = self(x)
+        return self.logits_to_labels(logits)
