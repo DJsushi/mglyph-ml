@@ -9,9 +9,45 @@
 
 = Introduction
 
-#TODO[intro]
+A Malleable Glyph is a small graphical design that usually fits within a 1#(sym.times)1 inch square. This image encodes a scalar we call $x$ and its value can range from 0.0 (including) up to 100.0 (including). The way this value $x$ is encoded in the glyph is by varying some visual aspect of the glyph with the value of $x$, for example the size, color, roundness, zoom, a combination of any of these, or any other visual aspects. The exact way this scalar value is encoded in the glyph is up to the author of the glyph. The essence of malleable glyph is to carry as much information as possible about the exact value of $x$ inside the static area of the glyph, making even a change of 0.01 $x$ units noticeable.
 
-= Explanation of The Malleable Glyph
+These glyphs can then be generated in batch, generating tens of thousands of glyphs in the range $x in [0.0, 100.0]$. These can afterwards be packaged into a dataset. These datasets are then used to train neural network models to predict the value of $x$.
+
+The purpose of this thesis was to create a set of tools (framework also) that facilitate the design and implementation of experiments on neural networks, and then, to create a few experiments, run them, and discover some new information about the neural networks. These experiments study how the neural networks are able to learn the glyphs. They can study if the neural network actually understands what in the glyph makes the $x$
+
+In @chapter-explanation-of-malleable-glyph, I briefly explain malleable glyphs in more detail, explaining the how and why of its existence, how it's linked to this thing called q-methodology, and I explain why some glyphs are not considered proper malleable glyphs and some are by introducing something called the "illiteracy rule". Afterwards, in @chapter-ml-fundamentals, I dive into the details of machine learning, specifically, what I've learned during the creation of this thesis about machine learning, I explain a special type of regression called "binned regression" and how I am using it for experiments. I also explain the development environment that I set up, and why I did certain things in the way I did. @chapter-creating-datasets introduces a comprehensive guide on how to create your own datasets, how to export them properly, different types of datasets, and gives some advice on how to create good quality datasets that are reusable across multiple experiments. Afterwards, we dive right into the experiments in @chapter-experiments, where I explain a couple of experiments I have done. 
+
+
+#TODO[
+  1. The Context (The Hook)
+  Start with a brief, non-technical explanation of the problem. Explain that Malleable Glyphs are small graphical designs (1 #sym.times 1 inch) used to encode a scalar value x∈.
+
+  Mention the "Illiteracy Rule": Explain the core principle that these glyphs must trigger a "how much?" intuition rather than a "how many?" (counting) process.
+  Motivation: Briefly note that these originated in UX research (Q-methodology) to replace cards with numbers, which people sort "digit-by-digit" instead of by feeling.
+
+  2. The Research Problem
+  Transition into the computer vision aspect. State the core question of your thesis: Can a machine "see" and decode these glyphs as accurately as (or better than) a human?.
+
+  Explain that while humans compare glyphs subjectively, your work explores the possibilities and limitations of Convolutional Neural Networks (CNNs) in predicting the exact parameter x from rendered images.
+
+  3. Thesis Goals (The "What I Did" section)
+  Explicitly state your objectives. Do not use the exact words from the assignment; use your own. Your goals included:
+
+  Establishing a robust pipeline: Creating a reusable workflow for generating datasets and running reproducible experiments using tools like the uv build system, Papermill, and ClearML.
+  Perfecting the "Straight Line": Achieving high-precision scalar prediction (y=x) through the implementation of Binned Regression.
+  Scientific Exploration: Testing the boundaries of the network's understanding through "gap" experiments (interpolation) and "baby" networks to prevent background memorisation.
+
+  4. The "Manual for Franta" (Chapter Overview)
+  Conclude the introduction with a walkthrough of the thesis. This acts as a manual for your successor so they know where to find specific information:
+
+  Chapter 2: Theoretical background of Malleable Glyphs and the Illiteracy Rule.
+  Chapter 3: The technical "laboratory"—explaining binned regression and the MLOps infrastructure (uv, Sophie server).
+  Chapter 4: Data engineering—how the .mglyph format works and how to use the mglyph library to build new datasets.
+  Chapter 5: The heart of the thesis—a series of controlled experiments answering specific hypotheses about generalization and network capacity.
+  Chapter 6: Final results, a summary of contributions, and concrete ideas for future work.
+]
+
+= Explanation of The Malleable Glyph <chapter-explanation-of-malleable-glyph>
 
 This chapter introduces the _malleable glyph_, explains its purpose, the current state of research surrounding it, #TODO[...]
 
@@ -54,9 +90,7 @@ So malleable glyphs started as a very practical UX problem inside Q methodology 
 
 == The Challenge
 
-#TODO[Quickly just introduce the challenge.]
-
-Having so many different options with
+prof. Herout introduced with the malleable glyph also a public challenge. He wanted to see a bunch of creative people creating their own glyphs and submitting them. The reason why he wanted this is so that we can find some glyph, which is able to show miniscule differences in $x$ visually. #TODO[cite author of bachelor's thesis of the web of the challenge] created a website where users see two glyphs next to each other, and they are tasked with determining the ordering of the glyphs. They have to say whether the glyph on the left is "larger", "smaller", or "the same" as the glyph on the right. Not in a sense of _size_, but in a sense of the value of $x$ itself. Remember, that glyphs can show the value of $x$ not only in their size, but many other visual aspects (ways).
 
 == The Illiteracy Rule
 
@@ -73,7 +107,7 @@ In other words, glyphs containing so-called _orders_ are *not* considered mallea
   caption: [An example of uneligible glyphs. The clock has multiple hands (orders), and thus, not a malleable glyph. The textual glyph has orders in the text itself -- the decimal numerical system, like any other numerical system, inherently contains orders.],
 ) <fig-bad-glyphs>
 
-= Machine Learning Fundamentals for Glyph Decoding
+= Machine Learning Fundamentals for Glyph Decoding <chapter-ml-fundamentals>
 
 we explain all the important details that are necessary for decoding glyphs... There are an infinite amount of ways that we can train a NN to decode glyphs. For example we could train a neural network on pairs like it has been done by #cite(<BibMohanedPairwise>, form: "prose") dsddsd
 
@@ -209,7 +243,6 @@ ClearML is an online MLOps platform. MLOps is a paradigm that encompasses a set 
 
 At the core of clearml is a _task_. A task is a single run of any experiment and it's stored on the clearml servers. When a task is run, clearML creates an instance of the task on the server. It also reports all the hyperparameters to the ClearML server #TODO[insert reference to hyperparam section].
 
-
 == Hyperparameter optimizers
 
 ClearML offers a feature called hyperparameter optimizering. Quite a lot of times, when training a neural network, there is a lot of stuff we can tune. The number of layers, the size of each layer, which activation functions to use, how to augment the data while training, etc. Most (if not all) of these parameters have some impact on how the final model behaves. That means, that if we have some kind of metric (like let's say the average of the last 10 losses #TODO[make sure to mention what a loss is before somewhere]), we can run the experiment with a certain set of parameters, see the value of the metric, then we run the experiment with a slightly different set of parameters, see how the metric changed, and of the metric went in the correct direction (in this case, down, because we want to minimize loss), that means, that we are doing something good. Then, we explore this so-called "hyperparameter space" (i think it's called that waym correct me if i'm wrong...) and an algorithm like Optuna, RandomSearch or GridSearch tries to find an optimal configuration of hyperparameters that yields in this case the lowest loss (but it can be any metric and it can either maximize the metric or get it as low as possible).
@@ -267,13 +300,11 @@ Maintenance Overhead: You had to spend time deleting old experiment history just
 5. Supervisor's Own Struggles
 It is worth noting that your supervisor, Herout, also attempted to install a local ClearML server and concluded that it was a significant "pain," eventually admitting that the installation "laughed in his face." This reinforced the decision to stick to the hosted version for basic reporting rather than trying to build a complex, local optimization cluster.
 
-== Trouble With The Straight Line
+== No Label Normalization
 
-Explain the trouble I went through with getting the damn straight line to work. I first tried a clssical regression model, I always got these huge tails on both ends of the straight line. Honestly I have no idea why that was, and I wasn't able to make it work successfully.
+#TODO[explain that I was using normalized labels from 0..100 to 0..1, but it was completely useless, the NN is able to predict values from 0 to 100 no problem.]
 
-The second attempt as binned regression.
-
-= Creating High Quality Datasets For Experiments
+= Creating High Quality Datasets For Experiments <chapter-creating-datasets>
 
 This chapter explains the basics of the `mglyph` library, and later explains how the library can be used for the creation of high quality datasets that can be used in experiments.
 
@@ -404,19 +435,23 @@ This single function creates the dataset at the specified path, using the specif
 
 === Creating Custom Datasets
 
-If the dual dataset doesn't fulfill your needs, no worries! You can also create a dataset completely manually using a builder pattern. Here's a code sample of creating a simple dataset manually:
+If the dual dataset doesn't fulfill your needs, no need to worry! You can also create a dataset completely manually using a `DatasetBuilder` using the builder pattern. Here's a code sample demonstrating how to create a simple dataset manually:
 
+#raw-annot(
+  (line: 1, symb: [1], label: <code-dataset-builder-create>),
+  (line: 2, symb: [2], label: <code-dataset-builder-linspace>),
+  (line: 4, symb: [3], label: <code-dataset-builder-add-sample>),
+  (line: 5, symb: [4], label: <code-dataset-builder-export>),
+)
 ```py
 dataset = create_dataset(name="Single-split Simple Star Uniform")
-
 xvalues = np.linspace(start=0.0, stop=100.0, num=10_000)
-
 for x in xvalues_train:
-    dataset.add_sample(drawer, x, split="main")
-
+    dataset.add_sample(drawer, x, split="main", metadata={"shape": "star"})
 dataset.export(path=Path("single-split-simple-star-uniform.mglyph"))
 ```
 
+Firstly, we create the dataset at @code-dataset-builder-create using the ```py create_dataset()``` function. This function returns a ```py _DatasetBuilder``` object, which we can use to set up the dataset before we export it at @code-dataset-builder-export. After creating the builder object, we use the ```py np.linspace()``` function to generate values in a uniform fashion across the entire interval of 0..100 @code-dataset-builder-linspace. When we want to add a new sample into the dataset, we invoke the ```py _DatasetBuilder.add_sample()``` method, specifying the `drawer`, the value of `x` and the `split` where to put the sample. All of these parameters are required. Note that we specify the drawer for every single glyph we add to the dataset. This is super useful because this means that we can put multiple types of glyphs into a single dataset. On that same line, we also add metadata to the sample using the `metadata` parameter of the ```py add_sample()``` method. In this case, it's not really necessary, because every single glyph in the dataset will get the same metadata, which kinda defeats the purpose of the metadata, which is to defferentiate different glyphs in the dataset. But I added it to this example so that you can see how it's done. Lastly, we export the dataset on line @code-dataset-builder-export, specifying the `path`. After running this code, a new file called `single-split-simple-star-uniform.mglyph` will get created in the current working directory.
 
 === Training vs. Validation vs. Testing <section-train-val-test>
 
@@ -425,18 +460,12 @@ Just a quick reminder on what the difference between a _training_, _validation_ 
 
 
 #TODO[
-  - [ ] explain how the dataset is structured
-    - [ ] splits
-    - [ ] metadata...
-    - [ ] loading them into the code...
-    - [ ] manifest (JSON)
-    - [ ] explain that we can also embed metadata into each sample (if we want to)
   - [ ] what makes a dataset reusable...
   - [ ] link to some tutorials... we can't explain everything about the library here
 
 ]
 
-= Experiments And Results
+= Experiments And Results <chapter-experiments>
 
 The whole point of this thesis was to find the limitations of computer vision in conjunction with the malleable glyphs. For running experiments, i created a series of Jupyter notebooks located at `notebooks/` named `experiment-*.ipynb`.
 
@@ -469,6 +498,18 @@ I also tried putting the parameters simply as global variables, but there was an
 // this is also related to Papermill...
 // TODO write a papermill section as well
 
+== Trouble With The Straight Line
+
+The whole point of the base experiment is that it has to be perfect. The neural network has to be able to predict the value of $x$ pretty much perfectly. Prof. Herout told me that we cannot continue with creating new experiment before we have a perfect (or near-perfect) base experiment. What we defined as perfect is that the NN is trained on some glyphs, and it should be able to predict the value of $x$ _very_ accurately when tested on the training set (a.k.a. we show it the same samples that the NN was trained on). We visualized the neural network's prediction on the training set using a plot seen in @fig-perfect-predictor. We can see that it's basically a perfectly straight line, which means that the predicted $x$ is very close to the real value of $x$, as the graph doesn't deviate at all from the $x_"pred" = x_"real"$ line.
+
+#figure(
+  image("fig/graphs/truth-vs-x-base-experiment-perfect.svg", width: 80%),
+  caption: [Plot showing the real value of $x$ on the horizontal axis, and the predicted value of $x$ on the vertical axis. In blue, we can see how a perfect model predicts. The red line is a visualization of how a troubled model might predict.],
+  placement: auto,
+) <fig-perfect-predictor>
+
+Creating this perfect experiment proved much more difficult than anticipated. Firstly, I had trouble with getting the neural network to learn reliably. About half of the trainings, the neural network simply learned the average value of the dataset and just always outputted the same value. Instead of the $x_"pred" = x_"real"$ line, the line looked more like $x_"pred" = 50$ (we can also see this line in @fig-perfect-predictor). Just a flat line. I don't have a clear explanation of why the model refused to learn properly, but I solved it by increasing the number of training samples, and increasing the complexity of the shape learned. This phenomenon happened only in simple single-colored triangles, when the number of training samples was #(sym.lt.approx)1000. By changing the shape from the triangle or square to a star, and increasing the number of training samples to above 1000, the chance of the neural network falling into this trap decreased to nearly zero. Every once in a while, the network still fell into the same valley. However, enabling training data augmentations completely eliminated this. Enabling a rotation augmentation in the range of $[-1 degree, +1 degree]$ as well as a translation augmentation ranging at $[-1%, +1%]$ solved the issue and the base task now consistently produces perfect or near-perfect models.
+
 == How Do I Design And Run My Own Experiment?
 
 First of all, we need a bit of curiosity. We need to as ourselves a question that we want answered regarding computer vision and malleable glyphs. Examples of such questions include:
@@ -483,6 +524,10 @@ Natural curiosity is key here and the more questions we get answered, the more q
 #TODO[JUJ ja neviem ci toto tu ma byt... mozno len popisem jednotlive experimenty... ale tam je dizajn uzko spojeny s implementaciou samotneho experimentu...]
 
 After that, it's time to design an experiment. An experiment is programmed inside a Jupyter notebook. I recommend that you simply create a copy of the Jupyter notebook located at `notebooks/experiment-base.ipynb` and rename the notebook to something like `experiment-my-own.ipynb` that explains your experiment. Of course you can also create your own notebook as the base of your experiment, but you can do that once you're more comfortable with how the framework works. For now, stick to creating experiments by cloning the base experiment notebook. After that, you're free to add new parameters to the beginning of the notebook and using them inside the notebook.
+
+== Finding The Optimal Learning Rate
+
+#TODO[this section explains the experiment I (and Mohaned) conducted to find the optimal learning rate scheduler.]
 
 == Experimenting With Centroids
 
@@ -536,4 +581,10 @@ Me and prof. Herout hypothesized that it could be because the centroids at the e
 
 This experiment aims to answer questions garding the NN's capability to interpolate.
 
-= Results, Conclusion And Future Work
+= Results, Conclusion And Future Work <chapter-results-conclusion>
+
+== Things I Would Have Done Have I Had More Time On My Hands
+
+Sometimes, when I run the base experiment, it still gets large losses at the edges of the interval (at x=0 and x=100). I am really not sure why this happens,
+
+Idk I am kinda sad that I didn't have more time to create more experiments, because I was mostly busy making the toolset for creating these experiments. However, on the bright side, the toolset is right now pretty mature and I was able to create these couple of experiments in a matter of hours. Of course, the framework always needs improvements, but it's pretty solid and it can definitely be used to set up new experiments easily.

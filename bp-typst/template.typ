@@ -75,6 +75,9 @@
   // show links as blue
   show link: set text(rgb("#3366CC"))
 
+  // when referring to chapters, say "chapter" instead of "section"
+  show heading.where(level: 1): set heading(supplement: [Chapter])
+
   body
 }
 
