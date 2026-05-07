@@ -50,22 +50,19 @@
         spacing: 0.65em,
         // put all the lines inside
         ..it.lines.map(line => {
-          // find the annotation inside the state that is on the line number specified
           let annot = annots.find(a => a.line == line.number)
-          box(
-            height: 1em,
-            stack(
-              dir: ltr,
-              spacing: 0.7em,
-              line.body,
-              if annot != none {
-                box(
-                  width: 1em,
-                  height: 0pt,
-                  place(horizon, dy: 0.45em, text(size: 1em / 0.8, csym(annot.symb))),
-                )
-              },
-            ),
+          stack(
+            dir: ltr,
+            spacing: 0.7em,
+            box(width: 0pt, height: 1em), // minimum height for empty lines, zero width
+            line.body,
+            if annot != none {
+              box(
+                width: 1em,
+                height: 0pt,
+                place(horizon, dy: 0.45em, text(size: 1em / 0.8, csym(annot.symb))),
+              )
+            },
           )
         }),
       ),

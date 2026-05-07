@@ -60,7 +60,9 @@
       block(below: 2em)[
         #text(weight: "bold", size: 1.2em)[Chapter #chapter-no]
         // FIXME: this is disgusting and the person who wrote it should be ashamed of themselves
-        #heading(numbering: none, outlined: false)[#it.body]
+        #text(size: 0.85em)[
+          #heading(numbering: none, outlined: false)[#it.body]
+        ]
       ]
     }
 

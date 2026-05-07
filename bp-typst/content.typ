@@ -13,9 +13,11 @@ A Malleable Glyph is a small graphical design that usually fits within a 1#(sym.
 
 These glyphs can then be generated in batch, generating tens of thousands of glyphs in the range $x in [0.0, 100.0]$. These can afterwards be packaged into a dataset. These datasets are then used to train neural network models to predict the value of $x$.
 
-The purpose of this thesis was to create a set of tools (framework also) that facilitate the design and implementation of experiments on neural networks, and then, to create a few experiments, run them, and discover some new information about the neural networks. These experiments study how the neural networks are able to learn the glyphs. They can study if the neural network actually understands what in the glyph makes the $x$
+The purpose of this thesis was to create a set of tools (framework also) that facilitate the design and implementation of experiments on neural networks, and then, to create a few experiments, run them, and discover some new information about the neural networks. These experiments study how the neural networks are able to learn the glyphs. They can study if the neural network actually understands what in the glyph makes the $x$ ..
 
-In @chapter-explanation-of-malleable-glyph, I briefly explain malleable glyphs in more detail, explaining the how and why of its existence, how it's linked to this thing called q-methodology, and I explain why some glyphs are not considered proper malleable glyphs and some are by introducing something called the "illiteracy rule". Afterwards, in @chapter-ml-fundamentals, I dive into the details of machine learning, specifically, what I've learned during the creation of this thesis about machine learning, I explain a special type of regression called "binned regression" and how I am using it for experiments. I also explain the development environment that I set up, and why I did certain things in the way I did. @chapter-creating-datasets introduces a comprehensive guide on how to create your own datasets, how to export them properly, different types of datasets, and gives some advice on how to create good quality datasets that are reusable across multiple experiments. Afterwards, we dive right into the experiments in @chapter-experiments, where I explain a couple of experiments I have done. 
+The structure of this thesis is unconventionnal, but it's like that on purpose after discussing with my supervisor.
+
+In @chapter-the-malleable-glyph, I briefly explain malleable glyphs in more detail, explaining the how and why of its existence, how it's linked to this thing called q-methodology, and I explain why some glyphs are not considered proper malleable glyphs and some are by introducing something called the "illiteracy rule". Afterwards, in @chapter-ml-fundamentals, I dive into the details of machine learning, specifically, what I've learned during the creation of this thesis about machine learning, I explain a special type of regression called "binned regression" and how I am using it for experiments. I also explain the development environment that I set up, and why I did certain things in the way I did. @chapter-creating-datasets introduces a comprehensive guide on how to create your own datasets, how to export them properly, different types of datasets, and gives some advice on how to create good quality datasets that are reusable across multiple experiments. Afterwards, we dive right into the experiments in @chapter-experiments, where I explain a couple of experiments I have done.
 
 
 #TODO[
@@ -47,9 +49,9 @@ In @chapter-explanation-of-malleable-glyph, I briefly explain malleable glyphs i
   Chapter 6: Final results, a summary of contributions, and concrete ideas for future work.
 ]
 
-= Explanation of The Malleable Glyph <chapter-explanation-of-malleable-glyph>
+= The Malleable Glyph <chapter-the-malleable-glyph>
 
-This chapter introduces the _malleable glyph_, explains its purpose, the current state of research surrounding it, #TODO[...]
+This chapter introduces the _malleable glyph_, explains its purpose, the current state of research surrounding it, #TODO[let ai write this chapter summary]
 
 == What Is a Malleable Glyph?
 
@@ -60,7 +62,7 @@ The concept of a malleable glyph was first introduced by #cite(<BibMalleableGlyp
   caption: [A malleable glyph showing a green triangle that encodes the value of $x$ in the size of the glyph. A small value of $x$ renders a small triangle, and as $x -> 100.0$, the triangle fills the entire glyph.],
 ) <fig-green-triangle>
 
-In @fig-green-triangle, we can see how a malleable glyph might look like. The triangle's size is linearly mapped to the value of $x$, interpolating from infinitesimal to edge-to-edge. The author of the glyph can choose to vary any aspect of the glyph in accordance with the parameter $x$. The size, color, shape, roundedness, spikiness, contrast, or even fractal structure #footnote[https://github.com/adamherout/mglyph] just to name a few. Another example of what's possible can be seen in @fig-fractal-tree.
+In @fig-green-triangle, we can see how a malleable glyph might look like. The triangle's size is linearly mapped to the value of $x$, interpolating from infinitesimal to edge-to-edge. The author of the glyph can choose to vary any aspect of the glyph in accordance with the parameter $x$. The size, color, shape, roundedness, spikiness, contrast, or even fractal structure #footnote[https://github.com/adamherout/mglyph] just to name a few. So, @fig-fractal-tree shows a more interesting example of a fractal tree opening up as $x$ approaches 100.
 
 #figure(
   image("fig/glyphs/fractal-tree.png"),
@@ -109,27 +111,98 @@ In other words, glyphs containing so-called _orders_ are *not* considered mallea
 
 = Machine Learning Fundamentals for Glyph Decoding <chapter-ml-fundamentals>
 
-we explain all the important details that are necessary for decoding glyphs... There are an infinite amount of ways that we can train a NN to decode glyphs. For example we could train a neural network on pairs like it has been done by #cite(<BibMohanedPairwise>, form: "prose") dsddsd
+The whole point of the thesis is to explore what we can do with machine learning computer vision models, and how far we can push them, discovering their limitations and strengths. One really good way of doing so is to use malleable glyphs, because they offer a very controlled way of creating datasets of images, that all have labels, and can be shown to a neural network. Using the technology of malleable glyph, we are able to generate thousands of very tailored training/validation/testing samples to show our neural networks.
 
-This chapter provides the technical "how-to" of your project, serving as a manual for your successor.
+This chapter explains some of the basics of machine learning that are relevant to the context of this research and essential for understanding the point of the experiments shown later. Because of the fact that the field of machine learning is so vast, I won't be diving too much into the details of all the topics, I will mostly just try to cover up to the boundary of what's necessary to know to understand the work of this thesis. However, for getting new ideas for new experiments, maybe a more in-depth understanding might be necessary. And thus, I can recommend some resources where you can learn the little intricacies from. A good starting point is the Nature article _Deep learning_ by #cite(<BibDeepLearningLeCun>, form: "prose"). It serves as an overview of the current state of deep learning and acts as a good introduction. For learning the basics, I recommend Andrew Ng's course of Coursera #footnote[https://www.coursera.org/specializations/machine-learning-introduction]. At the moment of writing, it has a free trial for 7 days, and it's more than possible to do it in a week. Most of the course is available on YouTube #footnote[https://www.youtube.com/playlist?list=PLBAGcD3siRDguyYYzhVwZ3tLvOyyG5k6K] for free indefinitely. Another useful resource for learning that I used was the book _Deep Learning_ by #cite(<BibDeepLearningBook>, form: "prose"). It covers the basic math necessary to understand artificial networks, chapter 5 on machine learning basics, and chapter 9 on convolutional neural networks is useful for this thesis.
 
-#TODO[
-  - [ ] regression in machine learning
-  - [ ] binned regression
-]
-
-== Neural Network Architecture
-
-Here, i explain how the NN actually looks like.
+== Artificial Neurons
 
 #figure(
-  rect([diagram of the NN], width: 100%, height: 10cm),
-  caption: [this diagram shows all the layers of the neural network and how they are connected.],
-)
+  diagram(
+    // debug: true,
+    spacing: (1.7cm, 0.5cm),
+    // cell-size: (0pt, 1em),
+    {
+      let wfill = teal.lighten(70%)
+      let wstroke = teal.darken(10%)
+      let sfill = purple.lighten(70%)
+      let sstroke = purple.darken(10%)
 
-The neural network is parametrized.
+      // input and weight nodes
+      for x in "123n" {
+        let x-int = if x == "n" { 4 } else { int(x) }
+        node((0, x-int), $x_#(x)$)
+        edge("*->")
+        node((1, x-int), $w_#(x)$, shape: circle, fill: wfill, stroke: wstroke, name: label("w" + x))
+        edge(<sum>, "->")
+      }
 
-== Binned Regression
+      // summation node
+      node(
+        (rel: (1, 0), to: (1, 2.5)),
+        text(size: 3em, $Sigma$),
+        shape: circle,
+        fill: sfill,
+        stroke: sstroke,
+        name: <sum>,
+      )
+
+      // activation block
+      node(
+        (rel: (1, 0), to: <sum>),
+        text(baseline: -1pt, size: 2em, $phi$),
+        shape: rect,
+        fill: sfill,
+        stroke: sstroke,
+        name: <act>,
+        inset: 1em,
+      )
+      edge(<act>, <last>, "->")
+      node((rel: (1, 0), to: <act>), [$y$ \ Output (activation)], name: <last>)
+      edge(<act>, "*->")
+      edge(<sum>, <act>, "->")
+      node((rel: (0pt, 4mm), to: <act.north>), [Activation Function])
+      node((rel: (0pt, -10mm), to: <sum.south>), [Transfer Function])
+    },
+  ),
+  caption: [A diagram of an artificial neuron. The inputs $x_n$ are multiplied by their respective weights $w_n$ and then combined at the transfer function (usually just added together). The summed value is sent through the activation function $phi$, which produces the output $y$ called the _activation_ (diagram credit user Funcs on Wikipedia).],
+  placement: auto,
+) <fig-artificial-neuron>
+
+/* l = layer number
+ * i = neuron index in the current layer
+ * j = neuron index in the previous layer
+ * k = optional neuron index in another layer or summation context
+ * n = index of input/weight in the simplified neuron model
+ */
+
+At the heart of any artificial neural network is a neuron. It's the smallest unit and the main building block of an artificial neural network #cite(<BibDeepLearningBook>). The artificial neuron mimics a biological, living neuron, although simplifies it drastically #cite(<BibMcCulloch1943>). Every artificial neuron has a set of inputs. These inputs can be coming from the data fed into the neural network, or they can come from other neurons, just like human neurons are either connected to receptors, or to other neurons. After receiving an input, the input is multiplied by a scalar value called a _weight_. My intuition behind this name is that it _weighs_ the input, it determines whether a certain input is important to the neuron or not. The weight $w_n$ has the potential to make some inputs very significant to the neuron by multiplying their values by a large positive or negative weight (values far away from 0), but it also has the potential to make an input completely insignificant to the neuron by multiplying the input $x_n$ by values close to 0.
+
+After the weights $w_n$ have been applied to their respective inputs $x_n$, the results of these multiplications are combined into a single scalar value using the _transfer function_. In the diagram shown in @fig-artificial-neuron, the transfer function is illustrated using the summation sign, $sum$. This is because most of the time, this transfer function is indeed just a simple summation.
+
+The last step in the pipeline is the _activation function_. The output of the transfer function becomes the input for the activation function, which is a mathematical function with specific properties. Its purpose is usually to normalize the output of the transfer function, which can be a very large or very small number, since it's a summation of $n$ numbers with arbitrary values. This function ca be chosen depending on the scenario. @fig-activation-functions illustrates some of the most common activation functions used.
+
+So, when we put all these steps together, the mathematical formula for calculating the output of an artificial neuron can be expressed like this:
+
+$ y = phi( sum_(n=1)^N x_n w_n ) = phi(x_1 w_1 + x_2 w_2 + dots + x_N w_N) $
+
+Please note that in this mathematical formula, the transfer function is a simple summation. Although different transfer functions can be used, in our case and in most of machine learning, a weighted sum is used #cite(<BibDeepLearningBook>).
+
+#figure(
+  image("fig/graphs/activations.svg", width: 100%),
+  caption: [The four most common activation functions. _Identity_ is basically a skip of the activation function, it returns the same thing that gets passed in. _Sigmoid_ has an S-shape that is used to constrain the output of the neuron between 0 and 1, while making a smooth transition between the two values as the input grows from 0 to #sym.infinity. _Binary step_ outputs 0 when $x < 0$, and 1 when $x >= 1$, making a not so smooth transition #TODO[rephrase]. _ReLU_ stands for _rectified linear unit_. It's 0 for $x <= 0$ and $x$ for $x > 0$.],
+  placement: auto,
+) <fig-activation-functions>
+
+
+// $ z_i^((l)) = sum_j w_"ij"^((l)) a_j^((l - 1)) + b_i^((l)) $
+
+
+== Regression
+
+We can use neural networks for solving a hige variety of tasks. However, in 99% of cases, these tasks all boil down to three main categories of tasks: classification, clustering, and regression. Classification is when we train a neural network to sort data into a finite number of _classes_. A _class_ is just a fancy term for a single type
+
+== Binned Regression <section-binned-regression>
 
 Binned regression is a mix between classical regression and classification. Instead of having a single neuron in the output layer, we have multiple neurons on the output. Each of these neurons corresponds to a _centroid_. A centroid is simply a number that is represented by that neuron.
 
@@ -219,6 +292,7 @@ I am using the file `.env` located in the root of the project. This file can be 
 
 - `MGML_DEVICE`: It's used to specify the device for training
 - #TODO[maybe other shit]
+
 
 == Software Architecture:
 
@@ -479,22 +553,49 @@ At the beginning of the notebook, there is a markdown title and explanation of t
 
 Now, every experiment has this thing called _hyperparameters_. These are parameters of a single run of a experiment. Usually, experiment Jupyter notebooks are not run a single time, but they're run multiple times with different combinations of hyperparameters. Then, the different runs of the experiment are compared to each other to answer a hypothesis. These hyperparameters are stored in a special Python `dataclass`:
 
+#figure(
+  ```py
+  @dataclass(frozen=True)
+  class RunConfig(RunConfigBase):
+      # The ClearML task tag.
+      task_tag: str = "tag-2"
+
+      # Where the dataset lies.
+      dataset_path: Path = Path("data/simple-star-20k-dual.mglyph")
+
+      # This seed is used by RNGs in the experiment to make it reproducible.
+      seed: int = 328
+
+      ...
+  ```,
+  caption: [sracka],
+)
+
+There is a reason why the hyperparameters are specified in a dataclass like this and not just as global variables. My first approach was actually having the parameters laid out like global variables inside a single cell, just like this:
+
 ```py
-@dataclass(frozen=True)
-class RunConfig(RunConfigBase):
-    # The ClearML task tag.
-    task_tag: str = "tag-2"
-
-    # Where the dataset lies.
-    dataset_path: Path = Path("data/simple-star-20k-dual.mglyph")
-
-    # This seed is used by RNGs in the experiment to make it reproducible.
-    seed: int = 328
-
-    ...
+task_tag: str = "tag-2"
+dataset_path: Path = Path("data/simple-star-20k-dual.mglyph")
+seed: int = 328
+...
 ```
 
-I also tried putting the parameters simply as global variables, but there was an issue with that approach. The task is reported to ClearML including all the hyperparameters... #TODO[clearml section?]
+However, this approach has a significant drawback. Although being simple, there was no simple way to report the variables to the ClearML servers without duplicating every single variable name at least once. This is because the reporting to the ClearML servers is done via a method call ```py clearml.task.Task.connect(parameters)```, there was no way to somehow "package" these global variables into a single object that can be passed into the ```py Task.connect()``` method. So, what I had to do, was something similar to this:
+
+```py
+params = {
+  "task_tag": task_tag,
+  "dataset_path": dataset_path,
+  "seed": seed
+}
+
+task.connect(params)
+```
+
+This approach means that for every new parameter added to the main `parameters` cell, one had to modify this new `params` dictionary to encompass the new parameter, writing every single parameter name three times. It's not the end of the world, but this kind of code duplication introduces space for bugs such as when you add a new parameter to the global `parameters` cell and forget to add it to the `params` dictionary, ClearML won't know about that parameter and hyperparameter optimization might break. After this, I tried capturing all the names of the global variables _before_ executing the `parameters` cell, and capturing all the names of the global variables _after_ running the `parameters` cell. This way, I could diff the two lists of variable names and see which variables were introduced. This method looks like it might work on the first look, however, it also has a significant drawback, and the drawback is that when you run the notebook once, all the global variables are created and everything works as expected. However, when you tweak some of the parameters, and run the cell again, the capturing logic that surrounds the `parameters` cell doesn't catch anything because the global variables all already exist in the global context, and the content of the `globals_before` and `globals_after` lists that should contain the names of the global variables introduced in the `parameters` cell will be identical, making the diff empty.
+
+Finally, I settled on the approach of having a dataclass represent
+
 // this is also related to Papermill...
 // TODO write a papermill section as well
 
@@ -523,23 +624,39 @@ Natural curiosity is key here and the more questions we get answered, the more q
 
 #TODO[JUJ ja neviem ci toto tu ma byt... mozno len popisem jednotlive experimenty... ale tam je dizajn uzko spojeny s implementaciou samotneho experimentu...]
 
-After that, it's time to design an experiment. An experiment is programmed inside a Jupyter notebook. I recommend that you simply create a copy of the Jupyter notebook located at `notebooks/experiment-base.ipynb` and rename the notebook to something like `experiment-my-own.ipynb` that explains your experiment. Of course you can also create your own notebook as the base of your experiment, but you can do that once you're more comfortable with how the framework works. For now, stick to creating experiments by cloning the base experiment notebook. After that, you're free to add new parameters to the beginning of the notebook and using them inside the notebook.
+After that, it's time to design an experiment. An experiment is programmed inside a Jupyter notebook. I recommend that you simply create a copy of the Jupyter notebook located at `notebooks/experiment-base.ipynb` and rename the notebook to something like `experiment-my-experiment-name.ipynb`. Choose a name that captures the essence of your experiment. Of course you can also create your own notebook as the base of your experiment, but you can do that once you're more comfortable with how the framework works. For now, stick to creating experiments by cloning the base experiment notebook.
+
+The next step is to add/tweak some hyperparameters. These can be found under the section of the Jupyter notebook called "Hyperparameters" and they're all contained within the ```py class RunConfig(RunConfigBase)``` dataclass. Under these hyperparameters, you can tweak various parameters of the training process. This class looks similar to this:
+
+```py
+@dataclass(frozen=True)
+class RunConfig(RunConfigBase):
+    dataset_path: Path = Path("data/simple-star-20k-dual.mglyph")
+    seed: int = 42
+    learning_rate: float = 0.0005
+    augment: bool = True
+    task_name: str = f"Task Name [seed={seed},lr={learning_rate}]"
+```
+
+This is a simplified snippet of what the class looks like; by default, it has more parameters, and you are free to add as many as you like.
 
 == Finding The Optimal Learning Rate
 
 #TODO[this section explains the experiment I (and Mohaned) conducted to find the optimal learning rate scheduler.]
 
+== The Gap Experiment
+
+This experiment aims to answer questions garding the NN's capability to interpolate.
+
 == Experimenting With Centroids
+
+As I mentioned previously in @section-binned-regression, centroids are the building block of binned regression...
+
+=== Finding The Optimal Number Of Centroids
 
 #TODO[also explain that i did experiments to determine an optimal number of centroids... 3 is too little, 5 is ok, 10 is also ok, 20 is also ok... i'm sticking with less because the NN is smaller, simpler, and there's no need for more centroids]
 
-#TODO[
-  another experiment is:
-  - Stred gap-u medzi centroidmi = ok?
-  - Stred gap-u rovno na centroide = shit?
-
-  to je hypoteza, mozeme otestovat a zistit ci naozaj ked je stred gap-u medzi centroidmi tak to bude lepsie ako ked bude stred rovno na centroide
-]
+=== Two Extra Centroids
 
 In this experiment, I am trying to answer the question whether it's better to have $C$ binned regression centroids distributed on the interval $[0.0, 100.0]$, or whether it's better to have $C + 2$ centroids withthe two extra centroids located outside of the interval at $-Delta_C$ and $100 + Delta_C$. The reason why I designed this experiment was that when I was trying to create the base experiment, I was having trouble with getting a completely straight line. The line had always these small "tails" at the ends.
 
@@ -573,13 +690,15 @@ Me and prof. Herout hypothesized that it could be because the centroids at the e
   caption: [Corresponds to @fig-truth-vs-x-centroids, and is just a different way to look at the data. Shows the loss on the vertical axis and the value of $x$ on the horizontal axis. As we can see, with the $C$ centroids evenly distributed on the interval $[0.0; 100.0]$, we have large losses at the edges of the graph and relatively small losses (in comparison) in the middle.],
 )
 
-== The Centroid Experiment 2
+=== Gap Between Centroids
 
+#TODO[
+  another experiment is:
+  - Stred gap-u medzi centroidmi = ok?
+  - Stred gap-u rovno na centroide = shit?
 
-
-== The Gap Experiment
-
-This experiment aims to answer questions garding the NN's capability to interpolate.
+  to je hypoteza, mozeme otestovat a zistit ci naozaj ked je stred gap-u medzi centroidmi tak to bude lepsie ako ked bude stred rovno na centroide
+]
 
 = Results, Conclusion And Future Work <chapter-results-conclusion>
 
