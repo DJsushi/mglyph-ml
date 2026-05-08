@@ -186,7 +186,11 @@ Please note that in this mathematical formula, the transfer function is a simple
   placement: auto,
 ) <fig-activation-functions>
 
-== Neurons As The Building Blocks Of Neural Networks
+== Artificial Neural Networks
+
+When we wire multiple of these artificial neurons together in a strategic manner, we are able to create more complex structures that are "smarter" than a single neuron. This newly created structure is called an _artificial neural network_, or ANN for short.
+
+=== Neurons As The Building Blocks Of Neural Networks
 
 #figure(
   diagram(
@@ -254,48 +258,22 @@ Please note that in this mathematical formula, the transfer function is a simple
       node((rel: (-1.0cm, 0.3cm), to: <n2_6.west>), $b_i^((1))$)
       node((rel: (1.1cm, 1.2cm), to: <n2_6.east>), $b_i^((2))$)
 
-      layer(0, [Inputs])
+      layer(0, [Inputs (*0*)])
       layer(1, [Input layer (*1*)])
       layer(2, [Hidden layer (*2*)])
       layer(3, [Output layer (*3*)])
       layer(4, [Outputs])
     },
   ),
-  caption: [A simple feed-forward neural network with one hidden layer. Inputs $x_j = a_j^((0))$ enter from the left, connections between layers carry weights $w_"ij"^((l))$, and each neuron output is passed forward as an activation to the next layer. For clarity, only the first and last weight in each layer-to-layer connection block are labeled.],
+  caption: [A simple feed-forward neural network with one hidden layer. Inputs $x_j = a_j^((0))$ enter from the left, connections between layers carry weights $w_"ij"^((l))$, and each neuron output is passed forward as an activation to the next layer. At the bottom of layer 1 and 2, we can see a special _bias_ neuron, carrying the value 1.],
   // placement: auto,
 ) <fig-neural-network>
 
-When we wire multiple of these artificial neurons together in a strategic manner, we are able to create more complex structures that are "smarter" than a single neuron. This newly created structure is called an _artificial neural network_, or ANN for short. These neural networks are usually composed of so-called _layers_. The first layer is called the _input layer_, as it connects the inputs to the rest of the network. At the end of the network, we have the _output layer_. This layer's neurons' activations (outputs of the activation function) become the actual output of the neural network. And lastly, in the middle, we can have an arbitrary amount of _hidden layers_. These are called 'hidden' because they are sandwiched between the input and output layers, hidden from plain sight #footnote[These layers are not truly hidden; they can still be inspected just as the input or output layers. They're still represented in the computer as matrices of numbers that aren't really hidden, the name just comes from the fact that they're between two layers that act as interfaces to the outside world (the input and output layer).]
+ANNs are usually composed of so-called _layers_. The first layer is called the _input layer_, as it connects the inputs to the rest of the network. At the end of the network, we have the _output layer_. This layer's neurons' activations (outputs of the activation function) become the actual output of the neural network. And lastly, in the middle, we can have an arbitrary amount of _hidden layers_. These are called 'hidden' because they are sandwiched between the input and output layers, hidden from plain sight #footnote[These layers are not truly hidden; they can still be inspected just as the input or output layers. They're still represented in the computer as matrices of numbers that aren't really hidden, the name just comes from the fact that they're between two layers that act as interfaces to the outside world (the input and output layer).].
 
-Between the layers, we have _weights_. They are noted using the letter $w$. These weights are where the neural network's "smartness" comes from. When creating a new neural network, these weights are usually given random values, and during the training of the neural network, these weights are nudged around. This nudging of the weights of the network is what makes the network learn, just like a human brain would.
+Between the individual layers, we have these connections called _weights_. Their mathematical notation is the letter $w$. These weights are where the neural network's "smartness" comes from. When creating a new neural network, these weights are usually given random values, and during the training of the neural network, these weights are nudged around a little (they slowly change their values). This nudging of the weights of the network is what makes the network learn, just like a human brain would.
 
-Here, I introduce the mathematical notation used for the rest of this thesis for talking about neural networks:
-
-// TODO: maybe make this into a table, idk...
-// #table(
-//   columns: (auto, 1fr),
-//   [Math notation], [Explanation],
-//   $l$, [index of the current layer.],
-//   $j$, [index of a neuron in the previous layer $(l - 1)$.],
-//   $i$, [index of a neuron in the current layer $l$.],
-//   - $a_j^((l - 1))$: activation from neuron $j$ in layer $(l - 1)$.
-//   - $w_"ij"^((l))$: weight connecting neuron $j$ in layer $(l - 1)$ to neuron $i$ in layer $l$.
-//   - $b_i^((l))$: bias of neuron $i$ in layer $l$.
-//   - $z_i^((l))$: pre-activation (weighted sum before applying the activation function).
-//   - $a_i^((l))$: output activation of neuron $i$ in layer $l$.
-// )
-
-// #block(above: 1.2em, below: 1.2em)[
-//   #set terms(spacing: 1.2em, indent: 0.5em) // TODO: i am unsure about the styling on this one.
-//   / $l$: index of the current layer.
-//   / $j$: index of a neuron in the previous layer $(l - 1)$.
-//   / $i$: index of a neuron in the current layer $l$.
-//   / $a_j^((l - 1))$: activation from neuron $j$ in layer $(l - 1)$.
-//   / $w_"ij"^((l))$: weight connecting neuron $j$ in layer $(l - 1)$ to neuron $i$ in layer $l$.
-//   / $b_i^((l))$: bias of neuron $i$ in layer $l$.
-//   / $z_i^((l))$: pre-activation (weighted sum before applying the activation function).
-//   / $a_i^((l))$: output activation of neuron $i$ in layer $l$.
-// ]
+Here is an overview of the mathematical notation used for talking about neural networks. I will be using this notation for the rest of the thesis:
 
 #aligned-terms(
   $l$,
@@ -316,23 +294,35 @@ Here, I introduce the mathematical notation used for the rest of this thesis for
   [output activation of neuron $i$ in layer $l$.],
 )
 
+$l$ is the number of the current layer. The input layer starts at $l = 1$, and the inputs $x_0 ... x_n$ are technically layer $l = 0$.
+
 For example, in @fig-neural-network, we can see that all neurons from the input layer (layer 1) are connected to all neurons in the hidden layer (layer 2). We call a layer whose all neurons are connected to all neurons from a previous layer a _fully connected layer_. So, we would call layer 2 a fully-connected layer. And if we want to talk about the connection (weight) between the first neuron in layer 1 and the third neuron in layer 2, we would write it as $w_"20"^((1))$, because the indexing of neurons in a given layer starts at 0, so the first neuron has the index 0. With this notation, the forward pass of one neuron in layer $l$ is:
 
 $ z_i^((l)) = sum_j w_"ij"^((l)) a_j^((l - 1)) + b_i^((l)) $
 
 $ a_i^((l)) = phi(z_i^((l))) $
 
+#TODO[...]
 
+== Using ANNs to Solve Problems
 
+We can use neural networks for solving a huge variety of tasks. However, in 99% of cases, these tasks all boil down to three main categories of tasks: _clustering_, _classification_, and _regression_.
 
+Clustering is a problem where we have a large amount of datapoints in a multidimensional space, and we need to group them into a set of _clusters_, where the datapoints that fall into the same cluster show greater similarity to each other than to the datapoints in other clusters.
 
-== Regression
+Classification is when we train a neural network to sort data into a finite number of _classes_. A class is just a fancy term for a single type of data. A simple example of a classification task would be to determine whether a certain image is a picture of either a taco, cat, goat, cheese or pizza. The neural network then outputs a set of probabilities that the image falls into each one of these classes.
 
-We can use neural networks for solving a hige variety of tasks. However, in 99% of cases, these tasks all boil down to three main categories of tasks: classification, clustering, and regression. Classification is when we train a neural network to sort data into a finite number of _classes_. A _class_ is just a fancy term for a single type
+Lastly, and most importantly, regression is a problem where our neural network is predicting a single value $y$ from the given set of inputs $x_0 ... x_n$. Regression is what the thesis will mainly focus on. One good example of a regression problem is a house prediction task. We have a dataset that contains information about individual houses, like their size in m#super[2], number of rooms, age, neighborhood quality. The dataset also contains the house's estimated price. We train our neural network on this data, and if the training goes well, we will have an ANN that will be able to predict relatively accurately the estimated price of any house, given that we provide the neural network with the house's properties. In this case, the house's properties are the inputs to the neural network, $x_0 ... x_3$. The predicted price of the house is the output $y$.
+
+Clustering is a branch of machine learning called _unsupervised learning_, where our data we train the ANN on isn't labeled, which means that there isn't a concept of a "right answer". We let the ANN determine the right answer my itself. On the other hand, classification and regression are part of _supervised learning_. This branch of ML needs labeled data, which means that for every set of inputs, we have a "right answer".
+
+== How Do Neural Networks Learn?
+
+When training a neural network, we show it data called _training samples_. This data
 
 == Binned Regression <section-binned-regression>
 
-Binned regression is a mix between classical regression and classification. Instead of having a single neuron in the output layer, we have multiple neurons on the output. Each of these neurons corresponds to a _centroid_. A centroid is simply a number that is represented by that neuron.
+Binned regression is a term #cite(<BibMohanedPairwise>, form: "author") introduced in the unpublished manuscript _Learning Glyph Value Estimation via Pairwise Comparison_. The term is new, however, the concept behind it isn't.   mix between regression and classification. Instead of having a single neuron in the output layer, we have multiple neurons on the output. Each of these neurons corresponds to a _centroid_. A centroid is simply a number that is represented by that neuron.
 
 The binned regression that is implemented in this project went through multiple iterations. Here, I will explain the first iteration stolen from Mohaned #cite(<BibMohanedPairwise>) and then also the improved implementation and a possible explanation of why the previous one didn't work and why it needed an improvement.
 
@@ -673,6 +663,10 @@ The whole point of this thesis was to find the limitations of computer vision in
 
 What's the point of an experiment? Well... we first ask questions and formulate a hypothesis. "Does augmentation help with the generalization of a NN?". A couple of hypotheses could be "We think that a neural network will generalize better when we show it augmented data because ...". Then, we test the hypothesis by constructing an experiment. We then run this experiment multiple times with different parameters (#TODO[insert link to hyperparams section]... these are explained in section blabla...) to confirm/reject the hypothesis. Based on the results, we might be asking some questions depending on what result we get, we modify the experiment a little, and we try again.
 
+== Why Malleable Glyph Is Perfect For Exploring Computer Vision Limits
+
+Finally, after explaining the mglyph, machine learning, and how datasets work, I can explain why the malleable glyph tech is so perfect for this task. The reason why the mglyph technology is so good for exploring the CV limits is that we are able hand-craft huge datasets of labeled image data that we can feed directly into the neural network. We are able to create a set of thousands of training/validation/testing samples, in a matter of minutes, that contain literally anything we want. We're also able to craft these images with labels with arbitrary resolutions, even down to 0.0001 of $x$ units.
+
 == The Base Experiment
 
 The base of every experiment is a notebook called `experiment-base.ipynb`. This notebook is documented in a very detailed manner and it serves as a base notebook for most other experiments.
@@ -681,23 +675,21 @@ At the beginning of the notebook, there is a markdown title and explanation of t
 
 Now, every experiment has this thing called _hyperparameters_. These are parameters of a single run of a experiment. Usually, experiment Jupyter notebooks are not run a single time, but they're run multiple times with different combinations of hyperparameters. Then, the different runs of the experiment are compared to each other to answer a hypothesis. These hyperparameters are stored in a special Python `dataclass`:
 
-#figure(
-  ```py
-  @dataclass(frozen=True)
-  class RunConfig(RunConfigBase):
-      # The ClearML task tag.
-      task_tag: str = "tag-2"
 
-      # Where the dataset lies.
-      dataset_path: Path = Path("data/simple-star-20k-dual.mglyph")
+```py
+@dataclass(frozen=True)
+class RunConfig(RunConfigBase):
+    # The ClearML task tag.
+    task_tag: str = "tag-2"
 
-      # This seed is used by RNGs in the experiment to make it reproducible.
-      seed: int = 328
+    # Where the dataset lies.
+    dataset_path: Path = Path("data/simple-star-20k-dual.mglyph")
 
-      ...
-  ```,
-  caption: [sracka],
-)
+    # This seed is used by RNGs in the experiment to make it reproducible.
+    seed: int = 328
+
+    ...
+```
 
 There is a reason why the hyperparameters are specified in a dataclass like this and not just as global variables. My first approach was actually having the parameters laid out like global variables inside a single cell, just like this:
 

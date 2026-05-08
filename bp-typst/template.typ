@@ -80,6 +80,10 @@
   // when referring to chapters, say "chapter" instead of "section"
   show heading.where(level: 1): set heading(supplement: [Chapter])
 
+  // citations of authors by the CSN ISO 690 are all caps and have a dot at the end...
+  show cite.where(form: "author"): set cite(style: "ieee")
+  show cite.where(form: "prose"): set cite(style: "ieee")
+
   body
 }
 
