@@ -1,5 +1,5 @@
 #import "template.typ": *
-#import "lib.typ": init-raw-annot, number-line, raw-annot
+#import "lib.typ": aligned-terms, init-raw-annot, number-line, raw-annot
 #import "@preview/fletcher:0.5.8" as fletcher: diagram, edge, node, shapes
 #import "@preview/cheq:0.3.0": checklist
 #import "@preview/cetz:0.5.0": canvas, draw
@@ -168,13 +168,6 @@ This chapter explains some of the basics of machine learning that are relevant t
   placement: auto,
 ) <fig-artificial-neuron>
 
-/* l = layer number
- * i = neuron index in the current layer
- * j = neuron index in the previous layer
- * k = optional neuron index in another layer or summation context
- * n = index of input/weight in the simplified neuron model
- */
-
 At the heart of any artificial neural network is a neuron. It's the smallest unit and the main building block of an artificial neural network #cite(<BibDeepLearningBook>). The artificial neuron mimics a biological, living neuron, although simplifies it drastically #cite(<BibMcCulloch1943>). Every artificial neuron has a set of inputs. These inputs can be coming from the data fed into the neural network, or they can come from other neurons, just like human neurons are either connected to receptors, or to other neurons. After receiving an input, the input is multiplied by a scalar value called a _weight_. My intuition behind this name is that it _weighs_ the input, it determines whether a certain input is important to the neuron or not. The weight $w_n$ has the potential to make some inputs very significant to the neuron by multiplying their values by a large positive or negative weight (values far away from 0), but it also has the potential to make an input completely insignificant to the neuron by multiplying the input $x_n$ by values close to 0.
 
 After the weights $w_n$ have been applied to their respective inputs $x_n$, the results of these multiplications are combined into a single scalar value using the _transfer function_. In the diagram shown in @fig-artificial-neuron, the transfer function is illustrated using the summation sign, $sum$. This is because most of the time, this transfer function is indeed just a simple summation.
@@ -195,14 +188,12 @@ Please note that in this mathematical formula, the transfer function is a simple
 
 == Neurons As The Building Blocks Of Neural Networks
 
-When we connect multiple of these artificial neurons together in a strategic manner, we are able to create more complex structures that are "smarter" than a single neuron.
-
 #figure(
   diagram(
     // debug: true,
     spacing: (1.2cm, 16pt),
     {
-      let neuron(pos, layer, name) = {
+      let neuron(pos, layer, name: none, content: []) = {
         let color = (
           (layer == 1, purple-fill, purple-stroke),
           (layer == 2, teal-fill, teal-stroke),
@@ -210,7 +201,7 @@ When we connect multiple of these artificial neurons together in a strategic man
         )
           .find(t => t.at(0))
           .slice(1, 3)
-        node(pos, shape: circle, fill: color.at(0), stroke: color.at(1), radius: 16pt, name: name)
+        node(pos, content, shape: circle, fill: color.at(0), stroke: color.at(1), radius: 16pt, name: name)
       }
 
       let layer(number, content) = {
@@ -227,29 +218,23 @@ When we connect multiple of these artificial neurons together in a strategic man
         node((rel: (0pt, 12pt), to: label("l" + str(number) + ".north")), content)
       }
 
-      for x in range(3) {
-        node((0, x + 1), $x_#(x)$, shape: circle, inset: 4pt, name: label("x_" + str(x)))
-      }
-
-      for i in range(3) {
-        for j in range(5) {
-          edge(label("x_" + str(i)), label("n1_" + str(j)), "*->")
-        }
-      }
-
       for row in range(5) {
-        neuron((1, row), 1, label("n1_" + str(row)))
+        node((0, row), $x_#(row)$, shape: circle, inset: 4pt, name: label("x_" + str(row)))
+        neuron((1, row), 1, name: label("n1_" + str(row)))
+        edge(label("x_" + str(row)), label("n1_" + str(row)), "*->")
       }
 
-      for row in range(7) {
-        neuron((2, row - 1), 2, label("n2_" + str(row)))
+      for row in range(6) {
+        neuron((2, row - 1), 2, name: label("n2_" + str(row)))
       }
 
       for row in range(3) {
-        neuron((3, row + 1), 3, label("n3_" + str(row)))
+        neuron((3, row + 1), 3, name: label("n3_" + str(row)))
+        node((4, row + 1), $y_#(row)$, name: label("y_" + str(row)))
+        edge(label("n3_" + str(row)), label("y_" + str(row)), "->")
       }
 
-      for i in range(5) {
+      for i in range(6) {
         for j in range(7) {
           edge(label("n1_" + str(i)), label("n2_" + str(j)), "->")
         }
@@ -261,17 +246,13 @@ When we connect multiple of these artificial neurons together in a strategic man
         }
       }
 
-      for row in range(3) {
-        node((4, row + 1), $y_#(row)$, name: label("y_" + str(row)))
-        edge(label("n3_" + str(row)), label("y_" + str(row)), "->")
-      }
+      neuron((1, 5), 1, name: <n1_5>, content: [1])
+      neuron((2, 5), 2, name: <n2_6>, content: [1])
 
-      node((rel: (-1.0cm, -0.4cm), to: <n1_0.west>), $w_00^((1))$)
-      node((rel: (-1.0cm, -0.4cm), to: <n2_0.west>), $w_00^((2))$)
-      node((rel: (1.1cm, -1.2cm), to: <n2_0.east>), $w_00^((3))$)
-      node((rel: (-1.1cm, 0.4cm), to: <n1_4.west>), $w_"ij"^((1))$)
-      node((rel: (-1.0cm, 0.3cm), to: <n2_6.west>), $w_"ij"^((2))$)
-      node((rel: (1.1cm, 1.2cm), to: <n2_6.east>), $w_"ij"^((3))$)
+      node((rel: (-1.0cm, -0.4cm), to: <n2_0.west>), $w_"ij"^((1))$)
+      node((rel: (1.1cm, -1.2cm), to: <n2_0.east>), $w_"ij"^((2))$)
+      node((rel: (-1.0cm, 0.3cm), to: <n2_6.west>), $b_i^((1))$)
+      node((rel: (1.1cm, 1.2cm), to: <n2_6.east>), $b_i^((2))$)
 
       layer(0, [Inputs])
       layer(1, [Input layer (*1*)])
@@ -280,8 +261,70 @@ When we connect multiple of these artificial neurons together in a strategic man
       layer(4, [Outputs])
     },
   ),
-  caption: [Diagram showing a simple neural network. The network receives some inputs, those get multiplied by their respective biases ... is this too off-topic? I hope not... achjaj.],
+  caption: [A simple feed-forward neural network with one hidden layer. Inputs $x_j = a_j^((0))$ enter from the left, connections between layers carry weights $w_"ij"^((l))$, and each neuron output is passed forward as an activation to the next layer. For clarity, only the first and last weight in each layer-to-layer connection block are labeled.],
+  // placement: auto,
+) <fig-neural-network>
+
+When we wire multiple of these artificial neurons together in a strategic manner, we are able to create more complex structures that are "smarter" than a single neuron. This newly created structure is called an _artificial neural network_, or ANN for short. These neural networks are usually composed of so-called _layers_. The first layer is called the _input layer_, as it connects the inputs to the rest of the network. At the end of the network, we have the _output layer_. This layer's neurons' activations (outputs of the activation function) become the actual output of the neural network. And lastly, in the middle, we can have an arbitrary amount of _hidden layers_. These are called 'hidden' because they are sandwiched between the input and output layers, hidden from plain sight #footnote[These layers are not truly hidden; they can still be inspected just as the input or output layers. They're still represented in the computer as matrices of numbers that aren't really hidden, the name just comes from the fact that they're between two layers that act as interfaces to the outside world (the input and output layer).]
+
+Between the layers, we have _weights_. They are noted using the letter $w$. These weights are where the neural network's "smartness" comes from. When creating a new neural network, these weights are usually given random values, and during the training of the neural network, these weights are nudged around. This nudging of the weights of the network is what makes the network learn, just like a human brain would.
+
+Here, I introduce the mathematical notation used for the rest of this thesis for talking about neural networks:
+
+// TODO: maybe make this into a table, idk...
+// #table(
+//   columns: (auto, 1fr),
+//   [Math notation], [Explanation],
+//   $l$, [index of the current layer.],
+//   $j$, [index of a neuron in the previous layer $(l - 1)$.],
+//   $i$, [index of a neuron in the current layer $l$.],
+//   - $a_j^((l - 1))$: activation from neuron $j$ in layer $(l - 1)$.
+//   - $w_"ij"^((l))$: weight connecting neuron $j$ in layer $(l - 1)$ to neuron $i$ in layer $l$.
+//   - $b_i^((l))$: bias of neuron $i$ in layer $l$.
+//   - $z_i^((l))$: pre-activation (weighted sum before applying the activation function).
+//   - $a_i^((l))$: output activation of neuron $i$ in layer $l$.
+// )
+
+// #block(above: 1.2em, below: 1.2em)[
+//   #set terms(spacing: 1.2em, indent: 0.5em) // TODO: i am unsure about the styling on this one.
+//   / $l$: index of the current layer.
+//   / $j$: index of a neuron in the previous layer $(l - 1)$.
+//   / $i$: index of a neuron in the current layer $l$.
+//   / $a_j^((l - 1))$: activation from neuron $j$ in layer $(l - 1)$.
+//   / $w_"ij"^((l))$: weight connecting neuron $j$ in layer $(l - 1)$ to neuron $i$ in layer $l$.
+//   / $b_i^((l))$: bias of neuron $i$ in layer $l$.
+//   / $z_i^((l))$: pre-activation (weighted sum before applying the activation function).
+//   / $a_i^((l))$: output activation of neuron $i$ in layer $l$.
+// ]
+
+#aligned-terms(
+  $l$,
+  [index of the current layer,],
+  $j$,
+  [index of a neuron in the previous layer $(l - 1)$,],
+  $i$,
+  [index of a neuron in the current layer $l$,],
+  $a_j^((l - 1))$,
+  [activation from neuron $j$ in layer $(l - 1)$,],
+  $w_"ij"^((l))$,
+  [weight connecting neuron $j$ in layer $(l - 1)$ to neuron $i$ in layer $l$,],
+  $b_i^((l))$,
+  [bias of neuron $i$ in layer $l$,],
+  $z_i^((l))$,
+  [pre-activation (weighted sum before applying the activation function),],
+  $a_i^((l))$,
+  [output activation of neuron $i$ in layer $l$.],
 )
+
+For example, in @fig-neural-network, we can see that all neurons from the input layer (layer 1) are connected to all neurons in the hidden layer (layer 2). We call a layer whose all neurons are connected to all neurons from a previous layer a _fully connected layer_. So, we would call layer 2 a fully-connected layer. And if we want to talk about the connection (weight) between the first neuron in layer 1 and the third neuron in layer 2, we would write it as $w_"20"^((1))$, because the indexing of neurons in a given layer starts at 0, so the first neuron has the index 0. With this notation, the forward pass of one neuron in layer $l$ is:
+
+$ z_i^((l)) = sum_j w_"ij"^((l)) a_j^((l - 1)) + b_i^((l)) $
+
+$ a_i^((l)) = phi(z_i^((l))) $
+
+
+
+
 
 == Regression
 

@@ -84,3 +84,15 @@
 
   body // <-- the rest of the document goes here
 }
+
+
+#let aligned-terms(..children) = block(
+  above: 1.2em,
+  below: 1.2em,
+  grid(
+    columns: (auto, 1fr),
+    row-gutter: 1.2em,
+    inset: ((right: 1em), 0pt),
+    ..children
+  ),
+)
