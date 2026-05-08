@@ -1,5 +1,5 @@
 #import "template.typ": *
-#show: template
+#show: template.with(printing: false)
 
 #page(margin: 0cm, image("res/title-page.svg"))
 #page(margin: 0cm, image("res/assignment.svg"))

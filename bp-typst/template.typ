@@ -1,4 +1,4 @@
-#let template(body) = {
+#let template(printing: false, body) = {
   let block-spacing = 2em
 
   // Same font as the BUT template
@@ -35,12 +35,19 @@
   // Match the LaTeX thesis template layout on A4 as closely as possible.
   set page(
     paper: "a4",
-    margin: (
-      left: 3.4cm,
-      right: 2.4cm,
-      top: 3.7cm,
-      bottom: 3.7cm,
-    ),
+    margin: if printing {
+      (
+        inside: 3.4cm,
+        outside: 2.4cm,
+        y: 3.7cm,
+      )
+    } else {
+      (
+        left: 3.4cm,
+        right: 2.4cm,
+        y: 3.7cm,
+      )
+    },
   )
 
   show heading: set text(size: 1.2em)
