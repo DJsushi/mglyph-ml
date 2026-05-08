@@ -115,7 +115,7 @@ The whole point of the thesis is to explore what we can do with machine learning
 
 This chapter explains some of the basics of machine learning that are relevant to the context of this research and essential for understanding the point of the experiments shown later. Because of the fact that the field of machine learning is so vast, I won't be diving too much into the details of all the topics, I will mostly just try to cover up to the boundary of what's necessary to know to understand the work of this thesis. However, for getting new ideas for new experiments, maybe a more in-depth understanding might be necessary. And thus, I can recommend some resources where you can learn the little intricacies from. A good starting point is the Nature article _Deep learning_ by #cite(<BibDeepLearningLeCun>, form: "prose"). It serves as an overview of the current state of deep learning and acts as a good introduction. For learning the basics, I recommend Andrew Ng's course of Coursera #footnote[https://www.coursera.org/specializations/machine-learning-introduction]. At the moment of writing, it has a free trial for 7 days, and it's more than possible to do it in a week. Most of the course is available on YouTube #footnote[https://www.youtube.com/playlist?list=PLBAGcD3siRDguyYYzhVwZ3tLvOyyG5k6K] for free indefinitely. Another useful resource for learning that I used was the book _Deep Learning_ by #cite(<BibDeepLearningBook>, form: "prose"). It covers the basic math necessary to understand artificial networks, chapter 5 on machine learning basics, and chapter 9 on convolutional neural networks is useful for this thesis.
 
-== Artificial Neurons
+== The Artificial Neuron
 
 #figure(
   diagram(
@@ -123,17 +123,16 @@ This chapter explains some of the basics of machine learning that are relevant t
     spacing: (1.7cm, 0.5cm),
     // cell-size: (0pt, 1em),
     {
-      let wfill = teal.lighten(70%)
-      let wstroke = teal.darken(10%)
-      let sfill = purple.lighten(70%)
-      let sstroke = purple.darken(10%)
-
       // input and weight nodes
-      for x in "123n" {
-        let x-int = if x == "n" { 4 } else { int(x) }
+      for x in "123nN" {
+        let x-int = if x == "n" { 4 } else {
+          if x == "N" { 5 } else {
+            int(x)
+          }
+        }
         node((0, x-int), $x_#(x)$)
         edge("*->")
-        node((1, x-int), $w_#(x)$, shape: circle, fill: wfill, stroke: wstroke, name: label("w" + x))
+        node((1, x-int), $w_#(x)$, shape: circle, fill: teal-fill, stroke: teal-stroke, name: label("w" + x))
         edge(<sum>, "->")
       }
 
@@ -142,8 +141,8 @@ This chapter explains some of the basics of machine learning that are relevant t
         (rel: (1, 0), to: (1, 2.5)),
         text(size: 3em, $Sigma$),
         shape: circle,
-        fill: sfill,
-        stroke: sstroke,
+        fill: purple-fill,
+        stroke: purple-stroke,
         name: <sum>,
       )
 
@@ -152,8 +151,8 @@ This chapter explains some of the basics of machine learning that are relevant t
         (rel: (1, 0), to: <sum>),
         text(baseline: -1pt, size: 2em, $phi$),
         shape: rect,
-        fill: sfill,
-        stroke: sstroke,
+        fill: purple-fill,
+        stroke: purple-stroke,
         name: <act>,
         inset: 1em,
       )
@@ -161,8 +160,8 @@ This chapter explains some of the basics of machine learning that are relevant t
       node((rel: (1, 0), to: <act>), [$y$ \ Output (activation)], name: <last>)
       edge(<act>, "*->")
       edge(<sum>, <act>, "->")
-      node((rel: (0pt, 4mm), to: <act.north>), [Activation Function])
-      node((rel: (0pt, -10mm), to: <sum.south>), [Transfer Function])
+      node((rel: (0pt, -5mm), to: <act.south>), [Activation Function])
+      node((rel: (0pt, 5mm), to: <sum.north>), [Transfer Function])
     },
   ),
   caption: [A diagram of an artificial neuron. The inputs $x_n$ are multiplied by their respective weights $w_n$ and then combined at the transfer function (usually just added together). The summed value is sent through the activation function $phi$, which produces the output $y$ called the _activation_ (diagram credit user Funcs on Wikipedia).],
@@ -180,13 +179,13 @@ At the heart of any artificial neural network is a neuron. It's the smallest uni
 
 After the weights $w_n$ have been applied to their respective inputs $x_n$, the results of these multiplications are combined into a single scalar value using the _transfer function_. In the diagram shown in @fig-artificial-neuron, the transfer function is illustrated using the summation sign, $sum$. This is because most of the time, this transfer function is indeed just a simple summation.
 
-The last step in the pipeline is the _activation function_. The output of the transfer function becomes the input for the activation function, which is a mathematical function with specific properties. Its purpose is usually to normalize the output of the transfer function, which can be a very large or very small number, since it's a summation of $n$ numbers with arbitrary values. This function ca be chosen depending on the scenario. @fig-activation-functions illustrates some of the most common activation functions used.
+The last step in the pipeline is the _activation function_. The output of the transfer function becomes the input for the activation function, which is a mathematical function with specific properties. Its purpose is usually to normalize the output of the transfer function, which can be a very large or very small number, since it's a summation of $N$ numbers with arbitrary values. This function ca be chosen depending on the scenario. @fig-activation-functions illustrates some of the most common activation functions used in machine learning.
 
 So, when we put all these steps together, the mathematical formula for calculating the output of an artificial neuron can be expressed like this:
 
-$ y = phi( sum_(n=1)^N x_n w_n ) = phi(x_1 w_1 + x_2 w_2 + dots + x_N w_N) $
+$ y = phi(sum_(n=1)^N x_n w_n) = phi(x_1 w_1 + x_2 w_2 + dots + x_N w_N) $ <math-artificial-neuron>
 
-Please note that in this mathematical formula, the transfer function is a simple summation. Although different transfer functions can be used, in our case and in most of machine learning, a weighted sum is used #cite(<BibDeepLearningBook>).
+Please note that in this mathematical formula, the transfer function is a simple summation. Although different transfer functions can be used, in our case and in most of machine learning, a weighted sum like shown in @math-artificial-neuron is used #cite(<BibDeepLearningBook>).
 
 #figure(
   image("fig/graphs/activations.svg", width: 100%),
@@ -194,9 +193,93 @@ Please note that in this mathematical formula, the transfer function is a simple
   placement: auto,
 ) <fig-activation-functions>
 
+== Neurons As The Building Blocks Of Neural Networks
 
-// $ z_i^((l)) = sum_j w_"ij"^((l)) a_j^((l - 1)) + b_i^((l)) $
+When we connect multiple of these artificial neurons together in a strategic manner, we are able to create more complex structures that are "smarter" than a single neuron.
 
+#figure(
+  diagram(
+    // debug: true,
+    spacing: (2.2cm, 16pt),
+    {
+      let neuron(pos, layer, name) = {
+        let color = (
+          (layer == 1, purple-fill, purple-stroke),
+          (layer == 2, teal-fill, teal-stroke),
+          (layer == 3, green-fill, green-stroke),
+        )
+          .find(t => t.at(0))
+          .slice(1, 3)
+        node(pos, shape: circle, fill: color.at(0), stroke: color.at(1), radius: 16pt, name: name)
+      }
+
+      let layer(from, to, number, content) = {
+        node(
+          enclose: (from, to),
+          stroke: stroke(paint: gray, dash: "dashed"),
+          fill: gray.lighten(70%),
+          corner-radius: 12pt,
+          layer: -1,
+          name: label("l" + str(number)),
+        )
+        node((rel: (0pt, 30pt), to: label("l" + str(number) + ".north")), content)
+      }
+
+      for x in range(3) {
+        node((0, x + 1), $x_#(x)$, shape: circle, inset: 4pt, name: label("x_" + str(x)))
+      }
+
+      for i in range(3) {
+        for j in range(5) {
+          edge(label("x_" + str(i)), label("n1_" + str(j)), "*->")
+        }
+      }
+
+      for row in range(5) {
+        neuron((1, row), 1, label("n1_" + str(row)))
+      }
+
+      for row in range(7) {
+        neuron((2, row - 1), 2, label("n2_" + str(row)))
+      }
+
+      for row in range(3) {
+        neuron((3, row + 1), 3, label("n3_" + str(row)))
+      }
+
+      for i in range(5) {
+        for j in range(7) {
+          edge(label("n1_" + str(i)), label("n2_" + str(j)), "->")
+        }
+      }
+
+      for i in range(7) {
+        for j in range(3) {
+          edge(label("n2_" + str(i)), label("n3_" + str(j)), "->")
+        }
+      }
+
+      for row in range(3) {
+        node((4, row + 1), $y_#(row)$, name: label("y_" + str(row)))
+        edge(label("n3_" + str(row)), label("y_" + str(row)), "->")
+      }
+
+      node((rel: (-1.0cm, -0.4cm), to: <n1_0.west>), $w_00^((1))$)
+      node((rel: (-0.8cm, -0.2cm), to: <n2_0.west>), $w_00^((2))$)
+      node((rel: (0.8cm, -0.75cm), to: <n2_0.east>), $w_00^((3))$)
+      node((rel: (-1.2cm, 0.5cm), to: <n1_4.west>), $w_"ij"^((1))$)
+      node((rel: (-1.2cm, 0.4cm), to: <n2_6.west>), $w_"ij"^((2))$)
+      node((rel: (1.5cm, 1.5cm), to: <n2_6.east>), $w_"ij"^((3))$)
+
+      layer(<x_0>, <x_2>, 0, [Inputs])
+      layer(<n1_0>, <n1_4>, 1, [Input layer (*1*)])
+      layer(<n2_0>, <n2_6>, 2, [Hidden layer (*2*)])
+      layer(<n3_0>, <n3_2>, 3, [Output layer (*3*)])
+      layer(<y_0>, <y_2>, 4, [Outputs])
+    },
+  ),
+  caption: [Diagram showing a simple neural network. The network receives some inputs, those get multiplied by their respective biases ... is this too off-topic? I hope not... achjaj.],
+)
 
 == Regression
 
