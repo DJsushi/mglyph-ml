@@ -200,7 +200,7 @@ When we connect multiple of these artificial neurons together in a strategic man
 #figure(
   diagram(
     // debug: true,
-    spacing: (2.2cm, 16pt),
+    spacing: (1.2cm, 16pt),
     {
       let neuron(pos, layer, name) = {
         let color = (
@@ -213,16 +213,18 @@ When we connect multiple of these artificial neurons together in a strategic man
         node(pos, shape: circle, fill: color.at(0), stroke: color.at(1), radius: 16pt, name: name)
       }
 
-      let layer(from, to, number, content) = {
+      let layer(number, content) = {
         node(
-          enclose: (from, to),
+          enclose: ((number, -2), (number, 6)),
           stroke: stroke(paint: gray, dash: "dashed"),
-          fill: gray.lighten(70%),
+          fill: gray.lighten(80%),
           corner-radius: 12pt,
+          shape: rect,
           layer: -1,
+          width: 2cm,
           name: label("l" + str(number)),
         )
-        node((rel: (0pt, 30pt), to: label("l" + str(number) + ".north")), content)
+        node((rel: (0pt, 12pt), to: label("l" + str(number) + ".north")), content)
       }
 
       for x in range(3) {
@@ -265,17 +267,17 @@ When we connect multiple of these artificial neurons together in a strategic man
       }
 
       node((rel: (-1.0cm, -0.4cm), to: <n1_0.west>), $w_00^((1))$)
-      node((rel: (-0.8cm, -0.2cm), to: <n2_0.west>), $w_00^((2))$)
-      node((rel: (0.8cm, -0.75cm), to: <n2_0.east>), $w_00^((3))$)
-      node((rel: (-1.2cm, 0.5cm), to: <n1_4.west>), $w_"ij"^((1))$)
-      node((rel: (-1.2cm, 0.4cm), to: <n2_6.west>), $w_"ij"^((2))$)
-      node((rel: (1.5cm, 1.5cm), to: <n2_6.east>), $w_"ij"^((3))$)
+      node((rel: (-1.0cm, -0.4cm), to: <n2_0.west>), $w_00^((2))$)
+      node((rel: (1.1cm, -1.2cm), to: <n2_0.east>), $w_00^((3))$)
+      node((rel: (-1.1cm, 0.4cm), to: <n1_4.west>), $w_"ij"^((1))$)
+      node((rel: (-1.0cm, 0.3cm), to: <n2_6.west>), $w_"ij"^((2))$)
+      node((rel: (1.1cm, 1.2cm), to: <n2_6.east>), $w_"ij"^((3))$)
 
-      layer(<x_0>, <x_2>, 0, [Inputs])
-      layer(<n1_0>, <n1_4>, 1, [Input layer (*1*)])
-      layer(<n2_0>, <n2_6>, 2, [Hidden layer (*2*)])
-      layer(<n3_0>, <n3_2>, 3, [Output layer (*3*)])
-      layer(<y_0>, <y_2>, 4, [Outputs])
+      layer(0, [Inputs])
+      layer(1, [Input layer (*1*)])
+      layer(2, [Hidden layer (*2*)])
+      layer(3, [Output layer (*3*)])
+      layer(4, [Outputs])
     },
   ),
   caption: [Diagram showing a simple neural network. The network receives some inputs, those get multiplied by their respective biases ... is this too off-topic? I hope not... achjaj.],
