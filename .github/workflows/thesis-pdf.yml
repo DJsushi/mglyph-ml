@@ -32,19 +32,6 @@ jobs:
         run: |
           mkdir -p site
           cp bp-typst/thesis.pdf site/thesis.pdf
-          cat > site/index.html << 'EOF'
-          <!doctype html>
-          <html lang="en">
-            <head>
-              <meta charset="utf-8" />
-              <meta name="viewport" content="width=device-width, initial-scale=1" />
-              <title>Thesis PDF</title>
-            </head>
-            <body>
-              <p><a href="./thesis.pdf">Open thesis PDF</a></p>
-            </body>
-          </html>
-          EOF
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
