@@ -2,15 +2,9 @@
 
 ## Thesis PDF (auto-published)
 
-The file `bp-typst/thesis.typ` is compiled to PDF on every push to `main` using GitHub Actions.
+The file `bp-typst/thesis.typ` is compiled to PDF on every push to `master` using GitHub Actions.
 
-- Fixed URL: `https://djsushi.github.io/mglyph-ml/thesis.pdf`
-- Workflow file: `.github/workflows/thesis-pdf.yml`
-
-One-time setup in GitHub repository settings:
-
-1. Open **Settings -> Pages**.
-2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
+You can find it [here](https://djsushi.github.io/mglyph-ml/thesis.pdf).
 
 ## Run it yourself
 
