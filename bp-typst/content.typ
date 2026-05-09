@@ -15,7 +15,7 @@ These glyphs can then be generated in batch, generating tens of thousands of gly
 
 The purpose of this thesis was to create a set of tools (framework also) that facilitate the design and implementation of experiments on neural networks, and then, to create a few experiments, run them, and discover some new information about the neural networks. These experiments study how the neural networks are able to learn the glyphs. They can study if the neural network actually understands what in the glyph makes the $x$ ..
 
-The structure of this thesis is unconventionnal, but it's like that on purpose after discussing with my supervisor.
+The structure of this thesis is a little unconventionnal, but it's like that on purpose after discussing with my supervisor. Instead of following the background, design and implementation structure, I first explain the malleable glyph, then I explain some machine learning, after that, I dive into the intricacies of a good ML development environment and infrastructure, after that, I explain how to use my framework to create high quality datasets for the purpose of experimenting with glyphs. Then, I introduce some of the experiments I have designed and run and explain how to make them yourself, and lastly, I conclude and explain my ideas that I didn't have time to implement but would love to if I had more time on the bachelor's thesis.
 
 In @chapter-the-malleable-glyph, I briefly explain malleable glyphs in more detail, explaining the how and why of its existence, how it's linked to this thing called q-methodology, and I explain why some glyphs are not considered proper malleable glyphs and some are by introducing something called the "illiteracy rule". Afterwards, in @chapter-ml-fundamentals, I dive into the details of machine learning, specifically, what I've learned during the creation of this thesis about machine learning, I explain a special type of regression called "binned regression" and how I am using it for experiments. I also explain the development environment that I set up, and why I did certain things in the way I did. @chapter-creating-datasets introduces a comprehensive guide on how to create your own datasets, how to export them properly, different types of datasets, and gives some advice on how to create good quality datasets that are reusable across multiple experiments. Afterwards, we dive right into the experiments in @chapter-experiments, where I explain a couple of experiments I have done.
 
@@ -109,7 +109,7 @@ In other words, glyphs containing so-called _orders_ are *not* considered mallea
   caption: [An example of uneligible glyphs. The clock has multiple hands (orders), and thus, not a malleable glyph. The textual glyph has orders in the text itself -- the decimal numerical system, like any other numerical system, inherently contains orders.],
 ) <fig-bad-glyphs>
 
-= Machine Learning Fundamentals for Glyph Decoding <chapter-ml-fundamentals>
+= Machine Learning Fundamentals For Malleable Glyph Regression <chapter-ml-fundamentals>
 
 The whole point of the thesis is to explore what we can do with machine learning computer vision models, and how far we can push them, discovering their limitations and strengths. One really good way of doing so is to use malleable glyphs, because they offer a very controlled way of creating datasets of images, that all have labels, and can be shown to a neural network. Using the technology of malleable glyph, we are able to generate thousands of very tailored training/validation/testing samples to show our neural networks.
 
@@ -253,8 +253,8 @@ When we wire multiple of these artificial neurons together in a strategic manner
       neuron((1, 5), 1, name: <n1_5>, content: [1])
       neuron((2, 5), 2, name: <n2_6>, content: [1])
 
-      node((rel: (-1.0cm, -0.4cm), to: <n2_0.west>), $w_"ij"^((1))$)
-      node((rel: (1.1cm, -1.2cm), to: <n2_0.east>), $w_"ij"^((2))$)
+      node((rel: (-1.0cm, -0.4cm), to: <n2_0.west>), $w_(i j)^((1))$)
+      node((rel: (1.1cm, -1.2cm), to: <n2_0.east>), $w_(i j)^((2))$)
       node((rel: (-1.0cm, 0.3cm), to: <n2_6.west>), $b_i^((1))$)
       node((rel: (1.1cm, 1.2cm), to: <n2_6.east>), $b_i^((2))$)
 
@@ -265,7 +265,7 @@ When we wire multiple of these artificial neurons together in a strategic manner
       layer(4, [Outputs])
     },
   ),
-  caption: [A simple feed-forward neural network with one hidden layer. Inputs $x_j = a_j^((0))$ enter from the left, connections between layers carry weights $w_"ij"^((l))$, and each neuron output is passed forward as an activation to the next layer. At the bottom of layer 1 and 2, we can see a special _bias_ neuron, carrying the value 1.],
+  caption: [A simple feed-forward neural network with one hidden layer. Inputs $x_j = a_j^((0))$ enter from the left, connections between layers carry weights $w_(i j)^((l))$, and each neuron output is passed forward as an activation to the next layer. At the bottom of layer 1 and 2, we can see a special _bias_ neuron, carrying the value 1.],
   // placement: auto,
 ) <fig-neural-network>
 
@@ -284,7 +284,7 @@ Here is an overview of the mathematical notation used for talking about neural n
   [index of a neuron in the current layer $l$,],
   $a_j^((l - 1))$,
   [activation from neuron $j$ in layer $(l - 1)$,],
-  $w_"ij"^((l))$,
+  $w_(i j)^((l))$,
   [weight connecting neuron $j$ in layer $(l - 1)$ to neuron $i$ in layer $l$,],
   $b_i^((l))$,
   [bias of neuron $i$ in layer $l$,],
@@ -298,7 +298,7 @@ $l$ is the number of the current layer. The input layer starts at $l = 1$, and t
 
 For example, in @fig-neural-network, we can see that all neurons from the input layer (layer 1) are connected to all neurons in the hidden layer (layer 2). We call a layer whose all neurons are connected to all neurons from a previous layer a _fully connected layer_. So, we would call layer 2 a fully-connected layer. And if we want to talk about the connection (weight) between the first neuron in layer 1 and the third neuron in layer 2, we would write it as $w_"20"^((1))$, because the indexing of neurons in a given layer starts at 0, so the first neuron has the index 0. With this notation, the forward pass of one neuron in layer $l$ is:
 
-$ z_i^((l)) = sum_j w_"ij"^((l)) a_j^((l - 1)) + b_i^((l)) $
+$ z_i^((l)) = sum_j w_(i j)^((l)) a_j^((l - 1)) + b_i^((l)) $
 
 $ a_i^((l)) = phi(z_i^((l))) $
 
@@ -429,6 +429,10 @@ Remote Execution: Practical use of the "Sophie" server with tmux to run long-ter
 *Testing and Validation:*
 Unit Tests: Briefly mention using pytest to verify critical logic, such as the labels_to_bins mapping.
 
+= Development Environment & Infrastructure
+
+#TODO[here i actually explain uv, environment setup, clearml, papermill...]
+
 == ClearML
 
 ClearML is an online MLOps platform. MLOps is a paradigm that encompasses a set of principles, components, roles, and architectures that all aim to deliver and run machine learning models more efficiently and reliably #cite(<BibMLOps>). ClearML has a big ecosystem, but for this thesis, we are only gonna use clearml for its monitoring capabilities and experiment comparison capabilities. Their free tier as of today offers 1GB of free metrics space, and 100GB of artifact storage (for storing models themselves) which is more than enough.
@@ -496,7 +500,7 @@ It is worth noting that your supervisor, Herout, also attempted to install a loc
 
 #TODO[explain that I was using normalized labels from 0..100 to 0..1, but it was completely useless, the NN is able to predict values from 0 to 100 no problem.]
 
-= Creating High Quality Datasets For Experiments <chapter-creating-datasets>
+= Creating High-Quality Datasets <chapter-creating-datasets>
 
 This chapter explains the basics of the `mglyph` library, and later explains how the library can be used for the creation of high quality datasets that can be used in experiments.
 
@@ -657,7 +661,7 @@ Just a quick reminder on what the difference between a _training_, _validation_ 
 
 ]
 
-= Experiments And Results <chapter-experiments>
+= Experiments With Malleable Glyphs <chapter-experiments>
 
 The whole point of this thesis was to find the limitations of computer vision in conjunction with the malleable glyphs. For running experiments, i created a series of Jupyter notebooks located at `notebooks/` named `experiment-*.ipynb`.
 
@@ -820,7 +824,7 @@ Me and prof. Herout hypothesized that it could be because the centroids at the e
   to je hypoteza, mozeme otestovat a zistit ci naozaj ked je stred gap-u medzi centroidmi tak to bude lepsie ako ked bude stred rovno na centroide
 ]
 
-= Results, Conclusion And Future Work <chapter-results-conclusion>
+= Results, Conclusion & Future Work <chapter-results-conclusion>
 
 == Things I Would Have Done Have I Had More Time On My Hands
 
