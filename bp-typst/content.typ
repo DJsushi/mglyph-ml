@@ -187,11 +187,14 @@ Please note that in this mathematical formula, the transfer function is a simple
 
 == The Basics of Artificial Neural Networks
 
-#let nnlayer(l) = $L^((#($l$)))$
-#let nnweight(i, j, l) = $w_(#($i$) #($j$))^((#($l$)))$
-#let nnbias(j, l) = $b_#($j$)^((#($l$)))$
-#let nninput(i: none) = $x_#($i$)$
-#let nnoutput(i: none) = $hat(y)_#($i$)$
+#let nnlayer(l) = $L^((#l))$
+#let nnact(sub, l) = $a_(#sub)^((#l))$
+#let nnweight(sub, l) = $w_#sub^((#l))$
+#let nnbias(i, l) = $b_#i^((#l))$
+#let nninput(i: none) = $x_#i$
+#let nnoutput(i: none) = $hat(y)_#i$
+#let nnweightm(l) = $W^((#l))$
+#let nnpreact(sub, l) = $z_#sub^((l))$
 
 When we wire multiple of these artificial neurons together in a strategic manner, we are able to create more complex structures that are "smarter" than a single neuron. This newly created structure is called an _artificial neural network_, or ANN for short.
 
@@ -202,7 +205,7 @@ When we wire multiple of these artificial neurons together in a strategic manner
     // debug: true,
     spacing: (1.2cm, 16pt),
     {
-      let neuron(pos, layer, name: none, content: []) = {
+      let neuron(pos, layer, name: none, fake: false, content: []) = {
         let color = (
           (layer == 1, purple-fill, purple-stroke),
           (layer == 2, teal-fill, teal-stroke),
@@ -210,7 +213,15 @@ When we wire multiple of these artificial neurons together in a strategic manner
         )
           .find(t => t.at(0))
           .slice(1, 3)
-        node(pos, content, shape: circle, fill: color.at(0), stroke: color.at(1), radius: 16pt, name: name)
+        node(
+          pos,
+          content,
+          shape: circle,
+          fill: color.at(0),
+          stroke: stroke(paint: color.at(1), dash: if fake { "dashed" } else { "solid" }),
+          radius: 16pt,
+          name: name,
+        )
       }
 
       let layer(number, content) = {
@@ -230,7 +241,7 @@ When we wire multiple of these artificial neurons together in a strategic manner
       // inputs (X) and input layer (1)
       for row in range(1, 6) {
         node((0, row), nninput(i: row), shape: circle, inset: 4pt, name: label("x_" + str(row)))
-        neuron((1, row), 1, name: label("n1_" + str(row)))
+        neuron((1, row), 1, fake: true, name: label("n1_" + str(row)))
         edge(label("x_" + str(row)), label("n1_" + str(row)), "*->")
       }
 
@@ -258,13 +269,13 @@ When we wire multiple of these artificial neurons together in a strategic manner
         }
       }
 
-      neuron((1, 0), 1, name: <n1_0>, content: [1])
-      neuron((2, 0), 2, name: <n2_0>, content: [1])
+      neuron((1, 0), 1, name: <n1_0>, fake: true, content: [1])
+      neuron((2, 0), 2, name: <n2_0>, fake: true, content: [1])
 
-      node((rel: (-1.0cm, -1.4cm), to: <n2_5.west>), nnweight[i][j][1])
-      node((rel: (1.1cm, -0.4cm), to: <n2_5.east>), nnweight[i][j][2])
-      node((rel: (-1.0cm, 0.4cm), to: <n2_0.west>), nnbias[j][1])
-      node((rel: (1.1cm, -1.2cm), to: <n2_0.east>), nnbias[j][2])
+      node((rel: (-1.0cm, -1.4cm), to: <n2_5.west>), nnweight($i j$, 1))
+      node((rel: (1.1cm, -0.4cm), to: <n2_5.east>), nnweight($i j$, 2))
+      node((rel: (-1.0cm, 0.4cm), to: <n2_0.west>), nnbias($i$, 1))
+      node((rel: (1.1cm, -1.2cm), to: <n2_0.east>), nnbias($i$, 2))
 
       layer(0, [Inputs (#nninput())])
       layer(1, [Input layer (*0*)])
@@ -273,7 +284,7 @@ When we wire multiple of these artificial neurons together in a strategic manner
       layer(4, [Outputs (#nnoutput())])
     },
   ),
-  caption: [A simple feed-forward neural network with one hidden layer. Inputs $x_j = a_j^((0))$ enter from the left, connections between layers carry weights $w_(i j)^((l))$, and each neuron output is passed forward as an activation to the next layer. On the right side, we can see the outputs of the neural network as $y_i =$. At the top of layer 1 and 2, we can see a special _bias_ neuron, carrying the value 1.],
+  caption: [A simple feed-forward neural network with one hidden layer. Inputs #nninput(i: $i$) enter from the left, connections between layers carry weights $w_(i j)^((l))$, and each neuron output is passed forward as an activation to the next layer. On the right side, we can see the outputs of the neural network as $y_i =$. At the top of layer 1 and 2, we can see a special _bias_ neuron, carrying the value 1. Neurons with a dashed outline aren't real neurons, but they are usually represented in diagrams as neurons for clarity.],
   // placement: bottom,
 ) <fig-neural-network>
 
@@ -287,17 +298,6 @@ And lastly, at the right side of the diagram, at the end of the neural network, 
 
 === Expressing Neural Networks in Mathematical Notation
 
-Let's introduce some basic mathematical notation so that we can make the explanations of later concepts easier to understand. Let's start with the _layers_. The individual layers of the neural network are labeled #nnlayer[l], with $l$ representing the number of the layer starting with 0 at the input layer. So, #nnlayer[0] is a direct reference to the input layer --- layer number 0.
-
-Inside these layers, we have _neurons_. @fig-neuron-in-network shows a single neuron inside an example network. On this illustration, we can see some of the important mathematical notation that's used when describing the parts of a neural network. This neuron lives in the layer #nnlayer[l]. It's connected via weights to neurons in the previous layer #nnlayer[l - 1] and to neurons in the next layer #nnlayer[l + 1].
-
-Like neurons live _inside_ a layer, weights live _between_ two layers. If a weight lives between layers #nnlayer[l - 1] and #nnlayer[l], and it connects neuron at index $j$ in layer #nnlayer[l - 1] with the neuron at index $i$ in layer #nnlayer[l], then we denote it using the notation #nnweight[i][j][l]. Every weight that connects two neurons is just a scalar value. Since most of the time, the weights connect every neuron in layer #nnlayer[l - 1] to every neuron in #nnlayer[l], if we are connecting two layers that contain $m$ and $n$ neurons, respectively, we will need a total of $m times n$ weights. These weights are usually represented not idividually, but as a matrix of weights. This matrix is denoted by using $W^((l))$, with $l$ being the number of the layer where the weights connect to. The bias is
-
-
-The activations (outputs) of the neurons in the previous layer $a_i^((l - 1))$ are conected by weights $w_(i j)^((l))$ to the tranfer functions of the neurons in the current layer.
-
-
-
 #figure(
   diagram(
     // debug: true,
@@ -306,8 +306,8 @@ The activations (outputs) of the neurons in the previous layer $a_i^((l - 1))$ a
     {
       // input and weight nodes
       for x in range(3) {
-        node((0, x), $a_#(x + 1)^((0))$)
-        edge(<sum>, $w_(c, #(x + 1))^((1))$, label-sep: 10pt, "o->", label-anchor: "center")
+        node((0, x), nnact(x + 1, 0))
+        edge(<sum>, nnweight($c, #(x + 1)$, 1), label-sep: 10pt, "o->", label-anchor: "center")
       }
 
       // summation node
@@ -349,7 +349,7 @@ The activations (outputs) of the neurons in the previous layer $a_i^((l - 1))$ a
       node((12, 1), shape: circle, radius: 1mm, stroke: black, name: <connector>)
 
       edge(<sum>, <act>, $z_c^((1))$, "->")
-      edge(<act>, <connector>, $a_c^((1))$, "->")
+      edge(<act>, <connector>, nnact($c$, 1), "->")
 
       for x in range(3) {
         edge(<connector>, (17, x), $w_(#(x + 1), c)^((2))$, label-sep: 10pt, label-anchor: "center", "->")
@@ -361,66 +361,71 @@ The activations (outputs) of the neurons in the previous layer $a_i^((l - 1))$ a
   placement: top,
 ) <fig-neuron-in-network>
 
-The activation (output) of a single neuron in layer $(l - 1)$ at index $i$ is defined as $a_i^((l - 1))$. The reason why we're defining
+Let's introduce some basic mathematical notation so that we can make the explanations of later concepts easier to understand. Let's start with the _layers_. The individual layers of the neural network are labeled #nnlayer[$l$], with $l$ representing the number of the layer starting with 0 at the input layer. So, #nnlayer(0) is a direct reference to the input layer --- layer number 0.
 
-These activations of the neurons in the previous layer are then connected by weights to the inputs of neurons in the next layer. These
+Inside these layers, we have _neurons_. @fig-neuron-in-network shows a single neuron inside an example network. On this illustration, we can see some of the important mathematical notation that's used when describing the parts of a neural network. This neuron lives in the layer #nnlayer($l$). It's connected via weights to neurons in the previous layer #nnlayer($l - 1$) and to neurons in the next layer #nnlayer($l + 1$).
 
+Like _neurons_ live _inside_ a layer, _weights_ live _between_ two layers. If a weight lives between layers #nnlayer($l - 1$) and #nnlayer($l$), and it connects neuron at index $j$ in layer #nnlayer($l - 1$) with the neuron at index $i$ in layer #nnlayer($l$), then we denote it using the notation #nnweight($i j$, $l$). Every weight that connects two neurons is just a scalar value. Since most of the time, the weights connect every neuron in layer #nnlayer($l - 1$) to every neuron in #nnlayer($l$), if we are connecting two layers that contain $m$ and $n$ neurons, respectively, we will need a total of $m times n$ weights. These weights are usually represented not individually, but as a matrix of weights. This matrix is denoted by using #nnweightm($l$), with $l$ being the number of the layer where the weights connect to. The _bias_ is a special value that is added to every neuron's transfer function separately. Its mathematical notation is #nnbias($i$, $l$).
 
+#TODO[explain why the bias exists #cite(<BibDeepLearningBook>).]
 
+Every layer's outputs are called _activations_ of the neurons. These activations of the neuron $i$ in a given layer #nnlayer($l$) are denoted by #nnact($i$, $l$). These represent the output of the neuron. A special case of the activation function is #nnact($i$, 0) (activation of #nnlayer(0)), because they correspond to the input vector #nninput(). So, we can say that $#nnact([], 0) = #nninput()$. Here we can see how a pre-activation is computed:
 
-#TODO[put this overview at the end maybe]
-#aligned-terms(
-  $w_(i j)^((l))$,
-  [weight connecting neuron $i$ in layer $(l - 1)$ to neuron $j$ in layer $l$,],
-  $W^((l))$,
-  [weight matrix connecting layer $(l - 1)$ to layer $l$; its entry in row $j$ and column $i$ is $w_(i j)^((l))$],
-  $a_i^((l - 1))$,
-  [activation from neuron $i$ in layer $(l - 1)$,],
-  $b_j^((l))$,
-  [bias of neuron $j$ in layer $l$,],
-  $z_j^((l))$,
-  [pre-activation (weighted sum before applying the activation function),],
-  $a_j^((l))$,
-  [output activation of neuron $j$ in layer $l$.],
-)
-#[
-  #let weights = range(3).map(j => range(6).map(i => $w_(#i, #j)^((2))$))
-  $ W^((2)) in RR^(3 times 6); quad W^((2)) = #math.mat(..weights, row-gap: 1em) $
-]
+$ #nnpreact($$, $l$) = #nnweightm($l$) #nnact($$, $l - 1$) + #nnbias($$, $l$) $
 
-Next up, we have the activation $a_i^((l - 1))$.
+Now, with all the notation defined, we can define a _forward pass_. A forward pass is the process of taking activations from one layer, computing pre-activations, applying the activation function, and passing the resulting activations to the next layer. For a whole layer $l$, the forward pass is:
 
+$
+  #nnact($$, $l$) = phi(#nnpreact($$, $l$)) = phi(#nnweightm($l$) #nnact($$, $l - 1$) + #nnbias($$, $l$))
+$ <math-forward-pass>
 
-These are the indices used to reference the weights between two layers. For example, between the input and hidden layer ($l = 1$ and $l = 2$), we have weights. In superscript into parentheses, we put the number of the layer where the weights come from, not where they feed into, thus, in this case, they come from layer 1, so we would write them as $w_(i j)^((1))$.
-
-For example, in @fig-neural-network, we can see that all neurons from the input layer (layer 1) are connected to all neurons in the hidden layer (layer 2). We call a layer whose all neurons are connected to all neurons from a previous layer a _fully-connected layer_. So, we would call layer 2 a fully-connected layer. And if we want to talk about the connection (weight) between the first neuron in layer 1 and the third neuron in layer 2, we would write it as $w_(0 2)^((2))$, because the indexing of neurons in a given layer starts at 1, so the first neuron has the index 1.
-
-
-$ z^((l)) = W^((l)) a^((l - 1)) + b^((l)) $
-
-With this notation, the forward pass of one neuron in layer $l$ is:
-
-$ z_j^((l)) = sum_i w_(i j)^((l)) a_i^((l - 1)) + b_j^((l)) $
-
-$ a_j^((l)) = phi(z_j^((l))) $
-
-#TODO[...]
+In @math-forward-pass, we define the activation (output) of a single layer as the activation function $phi$ applied to the pre-activation of the current layer.
 
 == Using ANNs to Solve Problems
 
-We can use neural networks for solving a huge variety of tasks. However, in 99% of cases, these tasks all boil down to three main categories of tasks: _clustering_, _classification_, and _regression_.
+We can use neural networks for solving a huge variety of tasks. However, in 99% of cases, these tasks all boil down to three main categories of tasks: _clustering_, _classification_, and _regression_. Since this thesis is concerned about supervised learning, I will skip clustering entirely and just focus on regression and classification. Clustering is a branch of machine learning called _unsupervised learning_, where our data we train the ANN on isn't labeled, which means that there isn't a concept of a "right output". We let the ANN determine the right answer my itself. On the other hand, classification and regression are part of _supervised learning_. This branch of ML requires labeled data, which means that for every set of inputs, we have a "right output".
 
-Clustering is a problem where we have a large amount of datapoints in a multidimensional space, and we need to group them into a set of _clusters_, where the datapoints that fall into the same cluster show greater similarity to each other than to the datapoints in other clusters.
+=== Regression
 
-Classification is when we train a neural network to sort data into a finite number of _classes_. A class is just a fancy term for a single type of data. A simple example of a classification task would be to determine whether a certain image is a picture of either a taco, cat, goat, cheese or pizza. The neural network then outputs a set of probabilities that the image falls into each one of these classes.
+#figure(
+  image("fig/graphs/house-regression.svg", width: 100%),
+  caption: [A graph showing a simple regression task. It only has one input parameter (because if we wanted to visualize more, we would need one extra dimension for every single input parameter). The input parameter is the size of the house, the output is the price in thousands of EUR. The model is is able to draw a line across the data that approximates the relationshipo between the house's size and its price. Because of the fact that the model draws a line, it's called a linear model. In neural networks, the model is able to draw all sorts of squiggly lines, not just straight lines through the data.],
+  placement: auto,
+)
 
-Lastly, and most importantly, regression is a problem where our neural network is predicting a single value $y$ from the given set of inputs $x_0 ... x_n$. Regression is what the thesis will mainly focus on. One good example of a regression problem is a house prediction task. We have a dataset that contains information about individual houses, like their size in m#super[2], number of rooms, age, neighborhood quality. The dataset also contains the house's estimated price. We train our neural network on this data, and if the training goes well, we will have an ANN that will be able to predict relatively accurately the estimated price of any house, given that we provide the neural network with the house's properties. In this case, the house's properties are the inputs to the neural network, $x_0 ... x_3$. The predicted price of the house is the output $y$.
+Regression is a problem where our neural network is predicting a single value #nnoutput(i: 1) from the given set of inputs $#nninput(i: 1) ... #nninput(i: $n$)$. One good example of a regression problem is a house price prediction task. We have a dataset that contains information about individual houses, like their size in m#super[2], number of rooms, age, and neighborhood quality. The dataset also contains the house's estimated price. We train our neural network on this data, and if the training goes well, we will have an ANN that will be able to predict relatively accurately the estimated price of any house, given that we provide the neural network with the house's properties. In this case, the house's properties are the inputs to the neural network, $#nninput(i: 1) ... #nninput(i: 4)$. The predicted price of the house is the output #nnoutput(i: 1).
 
-Clustering is a branch of machine learning called _unsupervised learning_, where our data we train the ANN on isn't labeled, which means that there isn't a concept of a "right answer". We let the ANN determine the right answer my itself. On the other hand, classification and regression are part of _supervised learning_. This branch of ML needs labeled data, which means that for every set of inputs, we have a "right answer".
+=== Classification
 
-== How Do Neural Networks Learn?
+Classification is when we train a neural network to sort data into a finite number of _classes_ or categories. A class is just a fancy term for a single type of data. A simple example of a classification task would be to determine whether a certain image is a picture of either a taco, cat, goat, cheese or pizza. The neural network then outputs a set of probabilities that the image falls into each one of these classes.
 
-When training a neural network, we show it some data $X$. This is the data that gets passed as input into the first, input layer $L^((1))$.
+#figure(
+  image("fig/graphs/classification-boundary.svg", width: 100%),
+  caption: [An example of a classification task where the ANN is tasked to draw a line between a cat and a taco. On the horizontal axis, we have a rating of protein content and on the vertical axis, we can see a cuteness rating in the interval $[0.0, 1.0]$. The neural network learns to distinguish cats from tacos based on these two parameters and predicts a probability that an input (a pair of values of protein content and cuteness) is either a taco or a cat.],
+  placement: auto,
+)
+
+== Loss Functions -- How Do ANNs Learn?
+
+Training a neural network is similar to teaching a child to draw the letter "A". The teacher shows the child and an A looks like. The child tries to draw the letter. The teacher compares the written A with their own correct version of an A in their head. Then, the teacher gives feedback to the child: "the A is too slanted", or "the middle bar is too low". The child then listens to the advice, and tries to draw an A again. This time, the A is a little more correct than the previous one. This process is repeated.
+
+In the context of a neural network that is being trained on a regression task, the process is very similar. Firstly, we show the ANN some input data. by "showing data" i mean that we pass the data as an input to the neural network. we do a single forward pass of the data, and then, we see what the neural network predicts. After the prediction is made, we can assess how well the neural network performed. For this assessment, we need to somehow compare the predicted output #nnoutput() to the expected output $y$. For this, we can use a variety of so-called _loss functions_.
+
+=== Mean Squared Error (MSE)
+
+The mean squared error's name indicates exactly what it does. It is the mean (average) of the errors _squared_. To compute the _error_, we compute the difference between the expected output $y_i$ and the predicted output #nnoutput(i: $i$). We compute this difference for all the outputs of the neural network, square all of them, add them all together and divide by the number of outputs $n$. Here's a mathematical formula for MSE:
+
+$ "MSE" = 1 / n sum_(i=1)^n (y_i - #nnoutput(i: $i$))^2 $
+
+A good feature of this loss function is that it always outputs a positive loss because of the fact that we square every error. Also, since there's a square, it punishes large error quite a lot compared to small errors. This helps the neural network to learn faster #TODO[check if makes sense and citation needed].
+
+MSE is used mostly for regression tasks.
+
+=== Mean Absolute Error (MAE)
+
+This function is very similar to MSE, except that it doesn't square the errors, it just computed the average of the absolute values of all the errors. Thus, its mathematical formulation looks like this:
+
+$ "MSE" = 1 / n sum_(i=1)^n |y_i - #nnoutput(i: $i$)| $
 
 == Binned Regression <section-binned-regression>
 
