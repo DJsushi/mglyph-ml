@@ -1,4 +1,13 @@
 #import "@preview/cetz:0.5.0": canvas, draw
+#import "@preview/fletcher:0.5.8" as fletcher: diagram, edge, node, shapes
+
+#let teal-fill = teal.lighten(70%)
+#let teal-stroke = teal.darken(10%)
+#let purple-fill = purple.lighten(70%)
+#let purple-stroke = purple.darken(10%)
+#let green-fill = green.lighten(70%)
+#let green-stroke = green.darken(10%)
+
 
 #let number-line(points: (0, 25, 50, 75, 100), start: 0, end: 100, length: 10) = canvas({
   import draw: *
@@ -96,3 +105,36 @@
     ..children
   ),
 )
+
+#let dneuron(pos, layer, name: none, fake: false, content: []) = {
+  let color = (
+    (layer == 1, purple-fill, purple-stroke),
+    (layer == 2, teal-fill, teal-stroke),
+    (layer == 3, green-fill, green-stroke),
+  )
+    .find(t => t.at(0))
+    .slice(1, 3)
+  node(
+    pos,
+    content,
+    shape: circle,
+    fill: color.at(0),
+    stroke: stroke(paint: color.at(1), dash: if fake { "dashed" } else { "solid" }),
+    radius: 16pt,
+    name: name,
+  )
+}
+
+#let dlayer(number, content) = {
+  node(
+    enclose: ((number, -2), (number, 6)),
+    stroke: stroke(paint: gray, dash: "dashed"),
+    fill: gray.lighten(80%),
+    corner-radius: 12pt,
+    shape: rect,
+    layer: -1,
+    width: 2cm,
+    name: label("l" + str(number)),
+  )
+  node((rel: (0pt, 12pt), to: label("l" + str(number) + ".north")), content)
+}

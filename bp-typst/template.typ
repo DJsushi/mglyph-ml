@@ -147,10 +147,3 @@
     #reference
   ],
 )
-
-#let teal-fill = teal.lighten(70%)
-#let teal-stroke = teal.darken(10%)
-#let purple-fill = purple.lighten(70%)
-#let purple-stroke = purple.darken(10%)
-#let green-fill = green.lighten(70%)
-#let green-stroke = green.darken(10%)

@@ -1,5 +1,5 @@
 #import "template.typ": *
-#import "lib.typ": aligned-terms, init-raw-annot, number-line, raw-annot
+#import "lib.typ": *
 #import "@preview/fletcher:0.5.8" as fletcher: diagram, edge, node, shapes
 #import "@preview/cheq:0.3.0": checklist
 #import "@preview/cetz:0.5.0": canvas, draw
@@ -205,54 +205,21 @@ When we wire multiple of these artificial neurons together in a strategic manner
     // debug: true,
     spacing: (1.2cm, 16pt),
     {
-      let neuron(pos, layer, name: none, fake: false, content: []) = {
-        let color = (
-          (layer == 1, purple-fill, purple-stroke),
-          (layer == 2, teal-fill, teal-stroke),
-          (layer == 3, green-fill, green-stroke),
-        )
-          .find(t => t.at(0))
-          .slice(1, 3)
-        node(
-          pos,
-          content,
-          shape: circle,
-          fill: color.at(0),
-          stroke: stroke(paint: color.at(1), dash: if fake { "dashed" } else { "solid" }),
-          radius: 16pt,
-          name: name,
-        )
-      }
-
-      let layer(number, content) = {
-        node(
-          enclose: ((number, -2), (number, 6)),
-          stroke: stroke(paint: gray, dash: "dashed"),
-          fill: gray.lighten(80%),
-          corner-radius: 12pt,
-          shape: rect,
-          layer: -1,
-          width: 2cm,
-          name: label("l" + str(number)),
-        )
-        node((rel: (0pt, 12pt), to: label("l" + str(number) + ".north")), content)
-      }
-
       // inputs (X) and input layer (1)
       for row in range(1, 6) {
         node((0, row), nninput(i: row), shape: circle, inset: 4pt, name: label("x_" + str(row)))
-        neuron((1, row), 1, fake: true, name: label("n1_" + str(row)))
+        dneuron((1, row), 1, fake: true, name: label("n1_" + str(row)))
         edge(label("x_" + str(row)), label("n1_" + str(row)), "*->")
       }
 
       // Hidden layer (2)
       for row in range(1, 7) {
-        neuron((2, row), 2, name: label("n2_" + str(row)))
+        dneuron((2, row), 2, name: label("n2_" + str(row)))
       }
 
       // output layer and outputs
       for row in range(3) {
-        neuron((3, row + 2), 3, name: label("n3_" + str(row)))
+        dneuron((3, row + 2), 3, name: label("n3_" + str(row)))
         node((4, row + 2), nnoutput(i: row), name: label("y_" + str(row)))
         edge(label("n3_" + str(row)), label("y_" + str(row)), "->")
       }
@@ -269,19 +236,19 @@ When we wire multiple of these artificial neurons together in a strategic manner
         }
       }
 
-      neuron((1, 0), 1, name: <n1_0>, fake: true, content: [1])
-      neuron((2, 0), 2, name: <n2_0>, fake: true, content: [1])
+      dneuron((1, 0), 1, name: <n1_0>, fake: true, content: [1])
+      dneuron((2, 0), 2, name: <n2_0>, fake: true, content: [1])
 
       node((rel: (-1.0cm, -1.4cm), to: <n2_5.west>), nnweight($i j$, 1))
       node((rel: (1.1cm, -0.4cm), to: <n2_5.east>), nnweight($i j$, 2))
       node((rel: (-1.0cm, 0.4cm), to: <n2_0.west>), nnbias($i$, 1))
       node((rel: (1.1cm, -1.2cm), to: <n2_0.east>), nnbias($i$, 2))
 
-      layer(0, [Inputs (#nninput())])
-      layer(1, [Input layer (*0*)])
-      layer(2, [Hidden layer (*1*)])
-      layer(3, [Output layer (*2*)])
-      layer(4, [Outputs (#nnoutput())])
+      dlayer(0, [Inputs (#nninput())])
+      dlayer(1, [Input layer (*0*)])
+      dlayer(2, [Hidden layer (*1*)])
+      dlayer(3, [Output layer (*2*)])
+      dlayer(4, [Outputs (#nnoutput())])
     },
   ),
   caption: [A simple feed-forward neural network with one hidden layer. Inputs #nninput(i: $i$) enter from the left, connections between layers carry weights $w_(i j)^((l))$, and each neuron output is passed forward as an activation to the next layer. On the right side, we can see the outputs of the neural network as $y_i =$. At the top of layer 1 and 2, we can see a special _bias_ neuron, carrying the value 1. Neurons with a dashed outline aren't real neurons, but they are usually represented in diagrams as neurons for clarity.],
@@ -401,17 +368,15 @@ Classification is when we train a neural network to sort data into a finite numb
 
 #figure(
   image("fig/graphs/classification-boundary.svg", width: 100%),
-  caption: [An example of a classification task where the ANN is tasked to draw a line between a cat and a taco. On the horizontal axis, we have a rating of protein content and on the vertical axis, we can see a cuteness rating in the interval $[0.0, 1.0]$. The neural network learns to distinguish cats from tacos based on these two parameters and predicts a probability that an input (a pair of values of protein content and cuteness) is either a taco or a cat.],
+  caption: [An example of a classification task where the ANN is tasked to draw a line between a cat and a taco. On the horizontal axis, we have a rating of protein content and on the vertical axis, we can see a cuteness rating in the interval $[0.0, 1.0]$. The neural network learns to distinguish cats from tacos based on these two parameters and predicts a probability that an input (a pair of values of protein content and cuteness) is either a taco or a cat. This chart contains all the training samples with their respective cuteness and protein content ratings as well as a visualization of how the network learned to distinguish between these two categories.],
   placement: auto,
 )
 
 #figure(
   image("fig/graphs/classification-probabilities.svg", width: 100%),
-  caption: [A bar chart showing the predicted class probabilities for a single input. The highest bar is the model's most likely class, while the remaining bars show less likely alternatives.],
+  caption: [A bar chart showing the predicted class probabilities for a _single_ input. We can see that the highest bar (taco) is the model's most confident prediction. All the probabilities add up to 100%.],
   placement: auto,
 )
-
-
 
 == Loss Functions -- How Do ANNs Learn?
 
@@ -445,11 +410,9 @@ $ "CE" = - sum_(i=1)^n y_i log(p_i) $
 
 CE is used mostly for classification tasks. It strongly penalizes confident wrong predictions and encourages high probability on the correct class.
 
-
-
 == Binned Regression <section-binned-regression>
 
-Binned regression is a term #cite(<BibMohanedPairwise>, form: "author") introduced in the unpublished manuscript _Learning Glyph Value Estimation via Pairwise Comparison_. The term is new, however, the concept behind it isn't.   mix between regression and classification. Instead of having a single neuron in the output layer, we have multiple neurons on the output. Each of these neurons corresponds to a _centroid_. A centroid is simply a number that is represented by that neuron.
+Binned regression is a term #cite(<BibMohanedPairwise>, form: "author") introduced in the unpublished manuscript _Learning Glyph Value Estimation via Pairwise Comparison_. The term is new, however, the concept behind it isn't. It is essentially a mix between regression and classification. Instead of having a single neuron in the output layer, we have multiple neurons on the output layer. Each of these neurons corresponds to a _centroid_. A centroid is simply a number that is represented by that neuron.
 
 The binned regression that is implemented in this project went through multiple iterations. Here, I will explain the first iteration stolen from Mohaned #cite(<BibMohanedPairwise>) and then also the improved implementation and a possible explanation of why the previous one didn't work and why it needed an improvement.
 
@@ -503,9 +466,16 @@ By extending the centroid set to $[-Delta, 100 + Delta]$, the model gets one ext
 )
 
 #figure(
-  rect([visualization], width: 100%, height: 7cm),
+  diagram(
+    debug: true,
+    {},
+  ),
   caption: [A diagram of the last layer of the neural network, with the number of neurons corresponding to the value of $C$.],
 )
+
+== Convolutional Neural Networks (CNNs)
+
+This is a special neural network type which uses a process called "convolution". They are mostly used for image processing and prediction,
 
 == Development Enviromnment: `pip`, `poetry` and `uv`
 
