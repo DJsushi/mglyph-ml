@@ -405,6 +405,14 @@ Classification is when we train a neural network to sort data into a finite numb
   placement: auto,
 )
 
+#figure(
+  image("fig/graphs/classification-probabilities.svg", width: 100%),
+  caption: [A bar chart showing the predicted class probabilities for a single input. The highest bar is the model's most likely class, while the remaining bars show less likely alternatives.],
+  placement: auto,
+)
+
+
+
 == Loss Functions -- How Do ANNs Learn?
 
 Training a neural network is similar to teaching a child to draw the letter "A". The teacher shows the child and an A looks like. The child tries to draw the letter. The teacher compares the written A with their own correct version of an A in their head. Then, the teacher gives feedback to the child: "the A is too slanted", or "the middle bar is too low". The child then listens to the advice, and tries to draw an A again. This time, the A is a little more correct than the previous one. This process is repeated.
@@ -425,7 +433,19 @@ MSE is used mostly for regression tasks.
 
 This function is very similar to MSE, except that it doesn't square the errors, it just computed the average of the absolute values of all the errors. Thus, its mathematical formulation looks like this:
 
-$ "MSE" = 1 / n sum_(i=1)^n |y_i - #nnoutput(i: $i$)| $
+$ "MAE" = 1 / n sum_(i=1)^n |y_i - #nnoutput(i: $i$)| $
+
+MAE is more robust to outliers because it grows linearly with the error instead of quadratically. It produces a constant-magnitude gradient (except at zero), which can make optimisation less sensitive to large errors. #TODO[less chatgpt yaps]
+
+=== Cross-Entropy (CE)
+
+Cross-entropy measures how well the predicted class probabilities match the true labels. If the target is one-hot encoded and the model outputs probabilities $p_i$, the loss is:
+
+$ "CE" = - sum_(i=1)^n y_i log(p_i) $
+
+CE is used mostly for classification tasks. It strongly penalizes confident wrong predictions and encourages high probability on the correct class.
+
+
 
 == Binned Regression <section-binned-regression>
 
