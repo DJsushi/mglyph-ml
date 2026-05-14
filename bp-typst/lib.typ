@@ -106,28 +106,29 @@
   ),
 )
 
-#let dneuron(pos, layer, name: none, fake: false, content: []) = {
+#let dneuron(pos, color, name: none, fake: false, corner-radius: 100em, content: []) = {
   let color = (
-    (layer == 1, purple-fill, purple-stroke),
-    (layer == 2, teal-fill, teal-stroke),
-    (layer == 3, green-fill, green-stroke),
+    (color == 1, purple-fill, purple-stroke),
+    (color == 2, teal-fill, teal-stroke),
+    (color == 3, green-fill, green-stroke),
   )
     .find(t => t.at(0))
     .slice(1, 3)
   node(
     pos,
     content,
-    shape: circle,
+    shape: shapes.rect,
     fill: color.at(0),
+    corner-radius: corner-radius,
     stroke: stroke(paint: color.at(1), dash: if fake { "dashed" } else { "solid" }),
     radius: 16pt,
     name: name,
   )
 }
 
-#let dlayer(number, content) = {
+#let dlayer(number, start-y, end-y, content) = {
   node(
-    enclose: ((number, -2), (number, 6)),
+    enclose: ((number, start-y), (number, end-y)),
     stroke: stroke(paint: gray, dash: "dashed"),
     fill: gray.lighten(80%),
     corner-radius: 12pt,

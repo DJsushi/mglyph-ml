@@ -244,11 +244,13 @@ When we wire multiple of these artificial neurons together in a strategic manner
       node((rel: (-1.0cm, 0.4cm), to: <n2_0.west>), nnbias($i$, 1))
       node((rel: (1.1cm, -1.2cm), to: <n2_0.east>), nnbias($i$, 2))
 
-      dlayer(0, [Inputs (#nninput())])
-      dlayer(1, [Input layer (*0*)])
-      dlayer(2, [Hidden layer (*1*)])
-      dlayer(3, [Output layer (*2*)])
-      dlayer(4, [Outputs (#nnoutput())])
+      let y-start = -1
+      let y-end = 7
+      dlayer(0, y-start, y-end, [Inputs (#nninput())])
+      dlayer(1, y-start, y-end, [Input layer (*0*)])
+      dlayer(2, y-start, y-end, [Hidden layer (*1*)])
+      dlayer(3, y-start, y-end, [Output layer (*2*)])
+      dlayer(4, y-start, y-end, [Outputs (#nnoutput())])
     },
   ),
   caption: [A simple feed-forward neural network with one hidden layer. Inputs #nninput(i: $i$) enter from the left, connections between layers carry weights $w_(i j)^((l))$, and each neuron output is passed forward as an activation to the next layer. On the right side, we can see the outputs of the neural network as $y_i =$. At the top of layer 1 and 2, we can see a special _bias_ neuron, carrying the value 1. Neurons with a dashed outline aren't real neurons, but they are usually represented in diagrams as neurons for clarity.],
@@ -328,7 +330,7 @@ And lastly, at the right side of the diagram, at the end of the neural network, 
   placement: top,
 ) <fig-neuron-in-network>
 
-Let's introduce some basic mathematical notation so that we can make the explanations of later concepts easier to understand. Let's start with the _layers_. The individual layers of the neural network are labeled #nnlayer[$l$], with $l$ representing the number of the layer starting with 0 at the input layer. So, #nnlayer(0) is a direct reference to the input layer --- layer number 0.
+Let's introduce some basic mathematical notation so that we can make the explanations of later concepts easier to understand. Let's start with the _layers_. The individual layers of the neural network are labeled #nnlayer[$l$], with $l$ representing the number of the layer starting with 0 at the input layer. So, #nnlayer(0) is a direct reference to the input layer --- layer number 0. The total number of layers inside a neural network is denoted by the capital letter $L$.
 
 Inside these layers, we have _neurons_. @fig-neuron-in-network shows a single neuron inside an example network. On this illustration, we can see some of the important mathematical notation that's used when describing the parts of a neural network. This neuron lives in the layer #nnlayer($l$). It's connected via weights to neurons in the previous layer #nnlayer($l - 1$) and to neurons in the next layer #nnlayer($l + 1$).
 
@@ -364,13 +366,21 @@ Regression is a problem where our neural network is predicting a single value #n
 
 === Classification
 
-Classification is when we train a neural network to sort data into a finite number of _classes_ or categories. A class is just a fancy term for a single type of data. A simple example of a classification task would be to determine whether a certain image is a picture of either a taco, cat, goat, cheese or pizza. The neural network then outputs a set of probabilities that the image falls into each one of these classes.
+Classification is when we train a neural network to sort data into a finite number of _classes_ or categories. A class is just a fancy term for a single type of data. A simple example of a classification task would be to determine whether a certain set of inputs corresponds to either a taco, cat, goat, cheese or pizza (TCGCP). The neural network then outputs a set of probabilities that the input sample falls into each one of these classes.
+
+Usually, classification works like this: first, you choose exactly what each of the output neurons represents. Let's use the TCGCP example. We have 5 output neurons and the first one's output corresponds to the taco, second one to the cat, and so on until the fifth one. We then train the neural network on examples of inputs. These inputs can be images, but they can also be some other arbitrary parameters, like for example in @fig-taco-cat-classification, we are classifying pairs of data (_protein content_, _cuteness_) into two categories: _taco_ or _cat_.
+
+When the neural network produces a prediction #nnoutput(), the outputs of the neurons in the output layer are not normalized and they don't represent probabilities. We need the probabilities in the output neurons to add up to 100%, but right now, they have values like 14.52, 0.461, 9.99. In order to transform them into probabilities that add up to 100%, we can use a function called _softmax_. The definition of softmax looks like this:
+
+$ "softmax"(y_i) = (e^(y_i)) / (sum_(j=1)^n e^(y_j)) $
+
+Essentially, it almost looks like an average, with the sum of elements as the denominator and each individual element in the nominator, but instead of just the individual elements $y_i$, we take $e^(y_i)$. This is mathematically guaranteed to produce values that add up to exactly 1 when added up.
 
 #figure(
   image("fig/graphs/classification-boundary.svg", width: 100%),
   caption: [An example of a classification task where the ANN is tasked to draw a line between a cat and a taco. On the horizontal axis, we have a rating of protein content and on the vertical axis, we can see a cuteness rating in the interval $[0.0, 1.0]$. The neural network learns to distinguish cats from tacos based on these two parameters and predicts a probability that an input (a pair of values of protein content and cuteness) is either a taco or a cat. This chart contains all the training samples with their respective cuteness and protein content ratings as well as a visualization of how the network learned to distinguish between these two categories.],
-  placement: auto,
-)
+  placement: top,
+) <fig-taco-cat-classification>
 
 #figure(
   image("fig/graphs/classification-probabilities.svg", width: 100%),
@@ -378,13 +388,15 @@ Classification is when we train a neural network to sort data into a finite numb
   placement: auto,
 )
 
-== Loss Functions -- How Do ANNs Learn?
+== How Do ANNs Learn?
 
-Training a neural network is similar to teaching a child to draw the letter "A". The teacher shows the child and an A looks like. The child tries to draw the letter. The teacher compares the written A with their own correct version of an A in their head. Then, the teacher gives feedback to the child: "the A is too slanted", or "the middle bar is too low". The child then listens to the advice, and tries to draw an A again. This time, the A is a little more correct than the previous one. This process is repeated.
+Training a neural network is similar to teaching a child to draw the letter "A". The teacher shows the child what an A looks like. The child tries to draw the letter. The teacher compares the written A with their own correct version of an A in their head. Then, the teacher gives feedback to the child: "the A is too slanted", or "the middle bar is too low". The child then listens to the advice, and tries to draw an A again. This time, the A is a little more correct than the previous one. This process is repeated.
+
+=== Loss Functions
 
 In the context of a neural network that is being trained on a regression task, the process is very similar. Firstly, we show the ANN some input data. by "showing data" i mean that we pass the data as an input to the neural network. we do a single forward pass of the data, and then, we see what the neural network predicts. After the prediction is made, we can assess how well the neural network performed. For this assessment, we need to somehow compare the predicted output #nnoutput() to the expected output $y$. For this, we can use a variety of so-called _loss functions_.
 
-=== Mean Squared Error (MSE)
+==== Mean Squared Error (MSE)
 
 The mean squared error's name indicates exactly what it does. It is the mean (average) of the errors _squared_. To compute the _error_, we compute the difference between the expected output $y_i$ and the predicted output #nnoutput(i: $i$). We compute this difference for all the outputs of the neural network, square all of them, add them all together and divide by the number of outputs $n$. Here's a mathematical formula for MSE:
 
@@ -394,7 +406,7 @@ A good feature of this loss function is that it always outputs a positive loss b
 
 MSE is used mostly for regression tasks.
 
-=== Mean Absolute Error (MAE)
+==== Mean Absolute Error (MAE)
 
 This function is very similar to MSE, except that it doesn't square the errors, it just computed the average of the absolute values of all the errors. Thus, its mathematical formulation looks like this:
 
@@ -402,13 +414,17 @@ $ "MAE" = 1 / n sum_(i=1)^n |y_i - #nnoutput(i: $i$)| $
 
 MAE is more robust to outliers because it grows linearly with the error instead of quadratically. It produces a constant-magnitude gradient (except at zero), which can make optimisation less sensitive to large errors. #TODO[less chatgpt yaps]
 
-=== Cross-Entropy (CE)
+==== Cross-Entropy (CE)
 
 Cross-entropy measures how well the predicted class probabilities match the true labels. If the target is one-hot encoded and the model outputs probabilities $p_i$, the loss is:
 
 $ "CE" = - sum_(i=1)^n y_i log(p_i) $
 
 CE is used mostly for classification tasks. It strongly penalizes confident wrong predictions and encourages high probability on the correct class.
+
+=== Updating Weights
+
+When the neural network is "learning", what it's actually doing is updating the weight matrices $#nnweightm($1$) ... #nnweightm($L$)$. Every time a set of inputs #nninput() is passed through the network, the loss function is used on the network's #nnoutput() to calculate how far the ANN was from the correct answer. Then, based on this loss value, an optimization algorithm is used. There are tons of optimization algorithms... Adam, SGD, Gradient Descent... All of them use the value of the loss in some way to nudge the weights around. In my case, I only used Adam, so I am only going to mention Adam. #TODO[cite paper that introduced Adam?... idk maybe off-topic]
 
 == Binned Regression <section-binned-regression>
 
@@ -456,9 +472,10 @@ By extending the centroid set to $[-Delta, 100 + Delta]$, the model gets one ext
 
 #TODO[i confirmed by experiment `experiment-centroid-distribution.ipynb` that indeed the NN is performing worse with the first version of the centroids... Now... this is an experiment, so do I put it into the next part? Or do I mention it here? The actual explanation of binned regression belongs here but there's also an experiment that provided me with the information that the version 2 is better and idk where to mention that...]
 
+#let bins = (-25, 0, 25, 50, 75, 100, 125)
 #figure(
   number-line(
-    points: (-25, 0, 25, 50, 75, 100, 125),
+    points: bins,
     start: -50,
     end: 150,
   ),
@@ -467,11 +484,44 @@ By extending the centroid set to $[-Delta, 100 + Delta]$, the model gets one ext
 
 #figure(
   diagram(
-    debug: true,
-    {},
+    // debug: true,
+    spacing: (2.5cm, 12pt),
+    {
+      let neurons-1 = 3
+      let neurons-2 = 7
+
+      node((0, 3), text(size: 3em, $...$), name: <etc>)
+
+      for i in range(neurons-1) {
+        dneuron((1, i + 2), 1, fake: true, name: label("n0_" + str(i)))
+      }
+
+      for i in range(neurons-2) {
+        let bin = bins.at(i)
+        dneuron((2, i), 2, corner-radius: 8pt, name: label("n1_" + str(i)), content: [#bin])
+      }
+
+      for i in range(neurons-1) {
+        edge(<etc>, label("n0_" + str(i)))
+      }
+
+      for i in range(neurons-1) {
+        for j in range(neurons-2) {
+          edge(label("n0_" + str(i)), label("n1_" + str(j)))
+        }
+      }
+
+      let start-y = -2
+      let end-y = 8
+      dlayer(0, start-y, end-y, [Rest of the ANN])
+      dlayer(1, start-y, end-y, [Last hidden layer])
+      dlayer(2, start-y, end-y, [Output layer])
+    },
   ),
   caption: [A diagram of the last layer of the neural network, with the number of neurons corresponding to the value of $C$.],
 )
+
+
 
 == Convolutional Neural Networks (CNNs)
 

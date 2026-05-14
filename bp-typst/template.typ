@@ -52,6 +52,10 @@
 
   show heading: set text(size: 1.2em)
 
+  // Headings depth 4 shouldn't have any numbers and should be a little smaller
+  show heading.where(depth: 4): set heading(numbering: none)
+  show heading.where(depth: 4): set text(size: 0.9em)
+
   // we need numbered equations!
   set math.equation(numbering: "(1)")
 
