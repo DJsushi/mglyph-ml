@@ -424,7 +424,17 @@ CE is used mostly for classification tasks. It strongly penalizes confident wron
 
 === Updating Weights
 
-When the neural network is "learning", what it's actually doing is updating the weight matrices $#nnweightm($1$) ... #nnweightm($L$)$. Every time a set of inputs #nninput() is passed through the network, the loss function is used on the network's #nnoutput() to calculate how far the ANN was from the correct answer. Then, based on this loss value, an optimization algorithm is used. There are tons of optimization algorithms... Adam, SGD, Gradient Descent... All of them use the value of the loss in some way to nudge the weights around. In my case, I only used Adam, so I am only going to mention Adam. #TODO[cite paper that introduced Adam?... idk maybe off-topic]
+When the neural network is "learning", what it's actually doing is updating the weight matrices $#nnweightm($1$) ... #nnweightm($L$)$. Every time a set of inputs #nninput() is passed through the network, the loss function is used on the network's output #nnoutput() to calculate how far the ANN was from the correct answer. Then, based on this loss value, an optimization algorithm is used that tweaks the weights of the network. The exact details are not necessary to understand for the purpose of this work, but it's important to know at least the surface level stuff. After a forward pass of the training data and a calculation of loss, a process called _backpropagation_ occurs. During this process, the model's weights are modified. It is the weights of the model that contain the model's smartness. These weights are the only state the model has and it is the weights themselves that is the thing we are actually "training". There is nothing else inside the model. Just weights.
+
+And, so, when backpropagation occurs, the model's weights are adjusted. Essentially, every single weight inside the model gets a very small number added and subtracted from itself, and the model's loss is calculated with this small change in the weight. When the model is learning, the loss usually decreases when a weight is moved in one direction and increases when the weight is moved to a different direction. After we figure out which direction decreases the loss, we just move the weight in that direction. But usually only a little bit, because moving it a lot might cause the loss to actually increase.
+
+#figure(
+  image("fig/graphs/weight-update.svg"),
+  caption: [A plot that shows a weight update. On the horizontal axis, we have the different values a weight can hold, and on the vertical axis we have the output of the loss function on a specific input with the specified weight.],
+  placement: auto,
+)
+
+There are tons of optimization algorithms... Adam, SGD, Gradient Descent... All of them use the value of the loss in some way to nudge the weights around. In my case, I only used Adam, so I am only going to mention Adam. #TODO[cite paper that introduced Adam?... idk maybe off-topic]
 
 == Binned Regression <section-binned-regression>
 
@@ -518,7 +528,7 @@ By extending the centroid set to $[-Delta, 100 + Delta]$, the model gets one ext
       dlayer(2, start-y, end-y, [Output layer])
     },
   ),
-  caption: [A diagram of the last layer of the neural network, with the number of neurons corresponding to the value of $C$.],
+  caption: [A diagram of a neural network for binned regression. The rest of the network is unimportant; what's important is the output layer where each neuron corresponds to a separate value on the number line.],
 )
 
 
@@ -526,6 +536,10 @@ By extending the centroid set to $[-Delta, 100 + Delta]$, the model gets one ext
 == Convolutional Neural Networks (CNNs)
 
 This is a special neural network type which uses a process called "convolution". They are mostly used for image processing and prediction,
+
+= Development Environment & Infrastructure
+
+#TODO[here i actually explain uv, environment setup, clearml, papermill...]
 
 == Development Enviromnment: `pip`, `poetry` and `uv`
 
@@ -575,10 +589,6 @@ Automation with Papermill: Describe using convert-notebook.sh to inject paramete
 Remote Execution: Practical use of the "Sophie" server with tmux to run long-term training sessions.
 *Testing and Validation:*
 Unit Tests: Briefly mention using pytest to verify critical logic, such as the labels_to_bins mapping.
-
-= Development Environment & Infrastructure
-
-#TODO[here i actually explain uv, environment setup, clearml, papermill...]
 
 == ClearML
 
