@@ -394,7 +394,7 @@ Training a neural network is similar to teaching a child to draw the letter "A".
 
 === Loss Functions
 
-In the context of a neural network that is being trained on a regression task, the process is very similar. Firstly, we show the ANN some input data. by "showing data" i mean that we pass the data as an input to the neural network. we do a single forward pass of the data, and then, we see what the neural network predicts. After the prediction is made, we can assess how well the neural network performed. For this assessment, we need to somehow compare the predicted output #nnoutput() to the expected output $y$. For this, we can use a variety of so-called _loss functions_.
+In the context of a neural network that is being trained on a regression task, the process is very similar. Firstly, we show the ANN some input data. by "showing data" i mean that we pass the data as an input to the neural network. we do a single forward pass of the data, and then, we see what the neural network predicts. After the prediction is made, we can assess how well the neural network performed. For this assessment, we need to somehow compare the predicted output #nnoutput() to the expected output $y$. For this, we can use a variety of so-called _loss functions_. The mathematical notation for a loss function is $cal(L)$. I introduce a couple that are important for this work.
 
 ==== Mean Squared Error (MSE)
 
@@ -426,19 +426,30 @@ CE is used mostly for classification tasks. It strongly penalizes confident wron
 
 When the neural network is "learning", what it's actually doing is updating the weight matrices $#nnweightm($1$) ... #nnweightm($L$)$. Every time a set of inputs #nninput() is passed through the network, the loss function is used on the network's output #nnoutput() to calculate how far the ANN was from the correct answer. Then, based on this loss value, an optimization algorithm is used that tweaks the weights of the network. The exact details are not necessary to understand for the purpose of this work, but it's important to know at least the surface level stuff. After a forward pass of the training data and a calculation of loss, a process called _backpropagation_ occurs. During this process, the model's weights are modified. It is the weights of the model that contain the model's smartness. These weights are the only state the model has and it is the weights themselves that is the thing we are actually "training". There is nothing else inside the model. Just weights.
 
-And, so, when backpropagation occurs, the model's weights are adjusted. Essentially, every single weight inside the model gets a very small number added and subtracted from itself, and the model's loss is calculated with this small change in the weight. When the model is learning, the loss usually decreases when a weight is moved in one direction and increases when the weight is moved to a different direction. After we figure out which direction decreases the loss, we just move the weight in that direction. But usually only a little bit, because moving it a lot might cause the loss to actually increase.
+When backpropagation occurs, the model's weights are adjusted. Each weight is
+perturbed by a small value in both directions, and the loss is evaluated at
+each perturbed value. This provides an estimate of the partial derivative of
+the loss with respect to each weight:
+
+$
+  (partial cal(L)) / (partial #nnweight($i j$, $l$)) approx (cal(L)(#nnweight($i j$, $l$) + epsilon) - cal(L)(#nnweight($i j$, $l$) - epsilon)) / (2 epsilon)
+$
+
+where $cal(L)$ is the loss function, #nnweight($i j$, $l$) is the concerned weight, and $epsilon$ is the small perturbation. The weight is then updated in the direction that reduces the loss.
+
+The magnitude of this update is determined by the _step size_, which depends on the chosen _learning algorithm_, or _optimizer_. My solution uses the Adam optimizer, as it is widely adopted, computationally efficient #cite(<BibAdamOptimizer>), and performed well for this task.
 
 #figure(
-  image("fig/graphs/weight-update.svg"),
-  caption: [A plot that shows a weight update. On the horizontal axis, we have the different values a weight can hold, and on the vertical axis we have the output of the loss function on a specific input with the specified weight.],
+  image("fig/graphs/weight-update.svg", width: 100%),
+  caption: [A plot that shows a weight update. On the horizontal axis, we have the different values a weight can hold, and on the vertical axis we have the output of the loss function on a specific input with the specified weight. When the weight is updated just a little, it progresses nicely towards a minimum (this is what we want, we want to minimize the loss). If we update the weight in the correct direction too much, we overshoot the minimum and we might end up at an even higher loss than where we started.],
   placement: auto,
-)
-
-There are tons of optimization algorithms... Adam, SGD, Gradient Descent... All of them use the value of the loss in some way to nudge the weights around. In my case, I only used Adam, so I am only going to mention Adam. #TODO[cite paper that introduced Adam?... idk maybe off-topic]
+) <fig-weight-update>
 
 == Binned Regression <section-binned-regression>
 
-Binned regression is a term #cite(<BibMohanedPairwise>, form: "author") introduced in the unpublished manuscript _Learning Glyph Value Estimation via Pairwise Comparison_. The term is new, however, the concept behind it isn't. It is essentially a mix between regression and classification. Instead of having a single neuron in the output layer, we have multiple neurons on the output layer. Each of these neurons corresponds to a _centroid_. A centroid is simply a number that is represented by that neuron.
+Binned regression is a term #cite(<BibMohanedPairwise>, form: "author") introduced in the unpublished manuscript _Learning Glyph Value Estimation via Pairwise Comparison_. The term is new, however, the concept behind it isn't. Another more popular term for this method is "regression by classification".
+
+It is essentially a mix between regression and classification. Instead of having a single neuron in the output layer, we have multiple neurons on the output layer. Each of these neurons corresponds to a _centroid_. A centroid is simply a number that is represented by that neuron.
 
 The binned regression that is implemented in this project went through multiple iterations. Here, I will explain the first iteration stolen from Mohaned #cite(<BibMohanedPairwise>) and then also the improved implementation and a possible explanation of why the previous one didn't work and why it needed an improvement.
 
@@ -532,6 +543,7 @@ By extending the centroid set to $[-Delta, 100 + Delta]$, the model gets one ext
 )
 
 
+There are some papers which explore this method for machine learning. For example, #cite(<BibDexAgeRegression>, form: "prose") used both pure regression and binned regression for a regression task. They used the #TODO[...] dataset to train a neural network to predict the age of a person from a picture. Instead of having a single output neuron for the age, they split the output into 101 classes -- ages 0 to 100 (one class per year of age, so #nnoutput(i: 1) corresponded to age of 1, #nnoutput(i: 2) to age of 2 and so on...). This approach worked better for them than having a single output neuron at the output of the network.
 
 == Convolutional Neural Networks (CNNs)
 
@@ -891,6 +903,8 @@ The whole point of the base experiment is that it has to be perfect. The neural 
 ) <fig-perfect-predictor>
 
 Creating this perfect experiment proved much more difficult than anticipated. Firstly, I had trouble with getting the neural network to learn reliably. About half of the trainings, the neural network simply learned the average value of the dataset and just always outputted the same value. Instead of the $x_"pred" = x_"real"$ line, the line looked more like $x_"pred" = 50$ (we can also see this line in @fig-perfect-predictor). Just a flat line. I don't have a clear explanation of why the model refused to learn properly, but I solved it by increasing the number of training samples, and increasing the complexity of the shape learned. This phenomenon happened only in simple single-colored triangles, when the number of training samples was #(sym.lt.approx)1000. By changing the shape from the triangle or square to a star, and increasing the number of training samples to above 1000, the chance of the neural network falling into this trap decreased to nearly zero. Every once in a while, the network still fell into the same valley. However, enabling training data augmentations completely eliminated this. Enabling a rotation augmentation in the range of $[-1 degree, +1 degree]$ as well as a translation augmentation ranging at $[-1%, +1%]$ solved the issue and the base task now consistently produces perfect or near-perfect models.
+
+#TODO[write about the fact that Pintea et al #cite(<BibClassificationHelpsRegression>) were exploring why classification loss helps with imbalanced data. Maybe propose that in the future Franta could try to explore if adding cross entropy loss to the MSE loss would work better than pure MSE.]
 
 == How Do I Design And Run My Own Experiment?
 
