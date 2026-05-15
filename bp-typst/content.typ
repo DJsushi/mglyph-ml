@@ -445,32 +445,27 @@ The magnitude of this update is determined by the _step size_, which depends on 
   placement: auto,
 ) <fig-weight-update>
 
-== Binned Regression <section-binned-regression>
+== Anchor Regression <section-anchor-regression>
 
-Binned regression is a term #cite(<BibMohanedPairwise>, form: "author") introduced in the unpublished manuscript _Learning Glyph Value Estimation via Pairwise Comparison_. The term is new, however, the concept behind it isn't. Another more popular term for this method is "regression by classification".
+Anchor regression is a hybrid of regression and classification. The concept behind it is not new, as several papers introduced it under different names like _regression by classification_, _binned regression_ and  #cite(<BibRegressionByClassification>),
 
-It is essentially a mix between regression and classification. Instead of having a single neuron in the output layer, we have multiple neurons on the output layer. Each of these neurons corresponds to a _centroid_. A centroid is simply a number that is represented by that neuron.
-
-The binned regression that is implemented in this project went through multiple iterations. Here, I will explain the first iteration stolen from Mohaned #cite(<BibMohanedPairwise>) and then also the improved implementation and a possible explanation of why the previous one didn't work and why it needed an improvement.
-
-The first implementation looked something like this:
-
-We divide the interval [0..100] into so-called "divisions", whose count is denoted by the letter $D$. We then calculate the distance between so-called "centroids". This distance is calculated in this manner:
-
-$ Delta_c = 100 / D $
-
-We then calculate the number of _centroids_:
-
-$ C = D + 1 $
-
-After that, we can simply compute the bin centers as evenly-spaced points across the interval $[0, 100]$:
+The core idea is simple: instead of a single output neuron predicting a scalar value directly, the output layer consists of multiple neurons, each corresponding to a fixed point on the number line called an _anchor_. The model produces a logit for each anchor, which are normalized into probabilities $p_i$ via softmax. The final prediction is then the expected value over all anchors:
 
 $
-  c_i = i dot ("end" - "start") / (C - 1) = i dot (100 - 0) / (C - 1) = i dot 100 / (C - 1) quad "for" quad i = 0, 1, ..., C - 1
+  hat(x) = sum_i p_i a_i,
 $
 
-For a number of divisions $D = 5$, we would get a centroid count of $C = D + 1 = 6$.
+where $a_i$ are the anchor positions. This lets the network express uncertainty naturally -- if the true value lies between two anchors, the network can assign probability mass to both. A common parameterization starts with $D$ divisions of the interval $[0, 100]$. The number of anchors is:
 
+$ A = D + 1 $
+
+and the anchors are placed as evenly-spaced points across the interval:
+
+$
+  a_i = i dot (100 - 0) / (A - 1) = i dot 100 / (A - 1) quad "for" quad i = 0, 1, ..., A - 1
+$
+
+For $D=5$ divisions, we get $A=6$ anchors evenly spaced from 0 to 100.
 
 #figure(
   number-line(
@@ -478,35 +473,13 @@ For a number of divisions $D = 5$, we would get a centroid count of $C = D + 1 =
     start: -25,
     end: 125,
   ),
-  caption: [The distribution of centroids on the number line (first iteration). $C$ centroids are evenly distributed from 0 until 100.],
+  caption: [Anchor placement for $A=6$ anchors evenly distributed over $[0,100]$.],
 )
-
-The issue with the first iteration is a boundary effect. If the centroids live only inside $[0, 100]$, then a target near the edge, say $x approx 0$ or $x approx 100$, can only be represented by centroids on one side. When the model turns the bin probabilities back into a scalar by computing an expected value,
-
-$
-  hat(x) = sum_i p_i c_i,
-$
-
-the prediction is pulled toward the interior because there are no centroids outside the interval to balance the distribution. In practice, this creates worse errors at the edges than in the middle of the range.
-
-By extending the centroid set to $[-Delta, 100 + Delta]$, the model gets one extra centroid on each side of the interval. That gives it room to place probability mass slightly outside the valid range, so the weighted average can still land near the boundary instead of being biased inward. After decoding, the final value is clamped back to $[0, 100]$, but the extra centroids help the regression behave more symmetrically near both ends.
-
-#TODO[i confirmed by experiment `experiment-centroid-distribution.ipynb` that indeed the NN is performing worse with the first version of the centroids... Now... this is an experiment, so do I put it into the next part? Or do I mention it here? The actual explanation of binned regression belongs here but there's also an experiment that provided me with the information that the version 2 is better and idk where to mention that...]
-
-#let bins = (-25, 0, 25, 50, 75, 100, 125)
-#figure(
-  number-line(
-    points: bins,
-    start: -50,
-    end: 150,
-  ),
-  caption: [blablabla],
-)
+The exact placement of anchors -- for example, whether to extend them slightly beyond the valid range -- is a design choice evaluated in the experiments section.
 
 #figure(
   diagram(
-    // debug: true,
-    spacing: (2.5cm, 12pt),
+    spacing: (1.1cm, 12pt),
     {
       let neurons-1 = 3
       let neurons-2 = 7
@@ -518,8 +491,11 @@ By extending the centroid set to $[-Delta, 100 + Delta]$, the model gets one ext
       }
 
       for i in range(neurons-2) {
-        let bin = bins.at(i)
-        dneuron((2, i), 2, corner-radius: 8pt, name: label("n1_" + str(i)), content: [#bin])
+        dneuron((2, i), 2, corner-radius: 8pt, name: label("n1_" + str(i)), content: [$c_#(i)$])
+        edge(label("n1_" + str(i)), label("y_" + str(i)), "->")
+        node((3, i), nnoutput(i: i), name: label("y_" + str(i)))
+        edge(label("y_" + str(i)), label("p_" + str(i)), "->", [softmax])
+        node((4, i), $p_#i$, name: label("p_" + str(i)))
       }
 
       for i in range(neurons-1) {
@@ -537,13 +513,15 @@ By extending the centroid set to $[-Delta, 100 + Delta]$, the model gets one ext
       dlayer(0, start-y, end-y, [Rest of the ANN])
       dlayer(1, start-y, end-y, [Last hidden layer])
       dlayer(2, start-y, end-y, [Output layer])
+      dlayer(3, start-y, end-y, [Outputs (logits)])
+      dlayer(4, start-y, end-y, [Probabilities])
     },
   ),
-  caption: [A diagram of a neural network for binned regression. The rest of the network is unimportant; what's important is the output layer where each neuron corresponds to a separate value on the number line.],
+  caption: [A diagram of the structure of a neural network for binned regression. The last layer contains $C$ neurons, and each one of them produces an output value called _logits_. These logits are then fed into the softmax function to produce a set of probabilities.],
 )
 
-
-There are some papers which explore this method for machine learning. For example, #cite(<BibDexAgeRegression>, form: "prose") used both pure regression and binned regression for a regression task. They used the #TODO[...] dataset to train a neural network to predict the age of a person from a picture. Instead of having a single output neuron for the age, they split the output into 101 classes -- ages 0 to 100 (one class per year of age, so #nnoutput(i: 1) corresponded to age of 1, #nnoutput(i: 2) to age of 2 and so on...). This approach worked better for them than having a single output neuron at the output of the network.
+This approach has been validated in practice. #cite(<BibDexAgeRegression>, form: "prose") applied it to age estimation from images, using 101 output neurons — one per year from 0 to 100 — and found it outperformed a single-neuron regression baseline.
+#cite(<BibMohanedPairwise>, form: "author") introduced a closely related formulation under the name binned regression in the unpublished manuscript Learning Glyph Value Estimation via Pairwise Comparison, using the term centroids for what we call anchors here. We prefer anchor regression because the mechanism has no inherent notion of bins — the output neurons represent fixed points, not intervals — and anchor more accurately reflects their role as reference points that the prediction is pulled toward.
 
 == Convolutional Neural Networks (CNNs)
 
@@ -555,21 +533,23 @@ This is a special neural network type which uses a process called "convolution".
 
 == Development Enviromnment: `pip`, `poetry` and `uv`
 
-i was choosing between pip, poetry and uv.
+I was choosing between pip, Poetry, and uv.
 
-Pip is an old classic, it's not bad but it has the problem that if a package is not needed anymore, removing it from the requirements.txt doesn't remove it from the environment `.venv`. So then, I have to either keep my environment polluted, or every once in a while, remove the entirety of the .venv folder, and re-create the environment using pip again.
+Pip is the old classic. It's not bad, but it has the problem that if a package is no longer needed, removing it from `requirements.txt` does not remove it from the `.venv` environment. Running `pip install -r requirements.txt` only installs missing packages; it doesn't sync the environment to exactly match the file. Because of this, the environment can slowly become polluted with unused orphaned dependencies unless I manually uninstall them or periodically delete and recreate the entire .venv.
 
-poetry is more modern, it's not bad because it uses the more modern `pyproject.toml` file for specifying dependencies. declaring dependencies this way is super cool because removing a dependency from the list actually removes it form the venv. This makes sure the enviroment always mirrors the pyproject.toml file, making sure all devs are always working int the same environment. The downside and the reason why i didn't choose it was that Poetry doesn't manage Python versions. Poetry simply uses the system Python binary. Inside the pyproject.toml file, there is a way to restrict the project's Python version in which it runs:
+Poetry is more modern and uses the pyproject.toml format for dependency management. Declaring dependencies this way is really nice because the project dependencies become centralized and reproducible through pyproject.toml and poetry.lock. Poetry can also keep the virtual environment synchronized with those files when using its install/sync workflow, which helps ensure all developers work in a consistent environment.
+
+The reason I ultimately did not choose Poetry is that it does not install or manage Python versions itself. It uses Python interpreters that are already installed on the system. Inside pyproject.toml, you can restrict which Python versions the project supports:
 
 ```
 requires-python = ">=3.13"
 ```
 
-however, this only restricts the Python version. So the person running the project has to manually install the correct python version. This might be a tedious process, depending on the OS.
+However, this only validates compatibility; the developer still has to manually install the correct Python version on their machine, which can be tedious depending on the OS.
 
-On the other hand, uv has a special file `.python-version`, which specifies the version of the Python to use for the project, automatically downloads it and runs the code with that version of python. This makes sure that the reproducibility of the environment is very high; every developer has the same environment and thus if any bugs arise, they have a very low chance of being caused by the development environment.
+On the other hand, uv supports integrated Python version management. It can use a .python-version file to specify the Python version for the project, automatically download that version if needed, and run the project with it. This greatly improves reproducibility because every developer can use the exact same Python version and dependency environment, reducing the chance of environment-specific bugs.
 
-Also, I chose uv because it's much faster than Poetry (it's written in Rust), and offers some very helpful commands.
+I also chose uv because it is significantly faster than Poetry due to being written in Rust, and it provides a lot of very useful built-in commands for dependency and environment management.
 
 === Using `uv`
 
@@ -943,9 +923,9 @@ This is a simplified snippet of what the class looks like; by default, it has mo
 
 This experiment aims to answer questions garding the NN's capability to interpolate.
 
-== Experimenting With Centroids
+== Experimenting With Centroids <section-centroid-experiments>
 
-As I mentioned previously in @section-binned-regression, centroids are the building block of binned regression...
+As I mentioned previously in @section-anchor-regression, centroids are the building block of binned regression. In this section, I focus on empirical choices around their placement and count.
 
 === Finding The Optimal Number Of Centroids
 
@@ -953,7 +933,19 @@ As I mentioned previously in @section-binned-regression, centroids are the build
 
 === Two Extra Centroids
 
-In this experiment, I am trying to answer the question whether it's better to have $C$ binned regression centroids distributed on the interval $[0.0, 100.0]$, or whether it's better to have $C + 2$ centroids withthe two extra centroids located outside of the interval at $-Delta_C$ and $100 + Delta_C$. The reason why I designed this experiment was that when I was trying to create the base experiment, I was having trouble with getting a completely straight line. The line had always these small "tails" at the ends.
+With evenly spaced centroids in $[0, 100]$, targets near the edges can only be represented by centroids on one side, which pulls the expected value toward the interior and increases edge error. I tested adding one extra centroid on each side, extending the set to $[-Delta, 100 + Delta]$, where $Delta$ is the centroid spacing. This gives the model room to place probability mass slightly outside the valid range; after decoding, the final value is clamped back to $[0, 100]$.
+
+#let bins = (-25, 0, 25, 50, 75, 100, 125)
+#figure(
+  number-line(
+    points: bins,
+    start: -50,
+    end: 150,
+  ),
+  caption: [Centroids with two extra bins outside the valid interval.],
+)
+
+In `experiment-centroid-distribution.ipynb`, the extended centroids consistently reduced the edge error and the small "tails" I saw when training the base experiment.
 
 #figure(
   stack(
