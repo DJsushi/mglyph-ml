@@ -115,6 +115,8 @@ The whole point of the thesis is to explore what we can do with machine learning
 
 This chapter explains some of the basics of machine learning that are relevant to the context of this research and essential for understanding the point of the experiments shown later. Because of the fact that the field of machine learning is so vast, I won't be diving too much into the details of all the topics, I will mostly just try to cover up to the boundary of what's necessary to know to understand the work of this thesis. However, for getting new ideas for new experiments, maybe a more in-depth understanding might be necessary. And thus, I can recommend some resources where you can learn the little intricacies from. A good starting point is the Nature article _Deep learning_ by #cite(<BibDeepLearningLeCun>, form: "prose"). It serves as an overview of the current state of deep learning and acts as a good introduction. For learning the basics, I recommend Andrew Ng's course of Coursera #footnote[https://www.coursera.org/specializations/machine-learning-introduction]. At the moment of writing, it has a free trial for 7 days, and it's more than possible to do it in a week. Most of the course is available on YouTube #footnote[https://www.youtube.com/playlist?list=PLBAGcD3siRDguyYYzhVwZ3tLvOyyG5k6K] for free indefinitely. Another useful resource for learning that I used was the book _Deep Learning_ by #cite(<BibDeepLearningBook>, form: "prose"). It covers the basic math necessary to understand artificial networks, chapter 5 on machine learning basics, and chapter 9 on convolutional neural networks is useful for this thesis.
 
+The beginning of this chapter covers some theoretical background around machine learning that is necessary to understand the thesis, and then, beginning at @section-weighted-centroid-regression, I explain some of the design decisions that went into the specific neural network that's currently the base of my work.
+
 == The Artificial Neuron
 
 #figure(
@@ -254,7 +256,7 @@ When we wire multiple of these artificial neurons together in a strategic manner
     },
   ),
   caption: [A simple feed-forward neural network with one hidden layer. Inputs #nninput(i: $i$) enter from the left, connections between layers carry weights $w_(i j)^((l))$, and each neuron output is passed forward as an activation to the next layer. On the right side, we can see the outputs of the neural network as $y_i =$. At the top of layer 1 and 2, we can see a special _bias_ neuron, carrying the value 1. Neurons with a dashed outline aren't real neurons, but they are usually represented in diagrams as neurons for clarity.],
-  // placement: bottom,
+  placement: auto,
 ) <fig-neural-network>
 
 ANNs are usually composed of so-called _layers_. The first layer is called the _input layer_, as it connects the inputs to the rest of the network. At the end of the network, we have the _output layer_. This layer's neurons' activations (outputs of the activation function $phi$) become the actual output of the neural network. And lastly, in the middle, we can have an arbitrary amount of _hidden layers_. These are called "hidden" because they are sandwiched between the input and output layers, hidden from plain sight #footnote[These layers are not truly hidden; they can still be inspected just like the input or output layers. They're still represented in the computer as matrices of numbers that aren't really hidden, the name just comes from the fact that they're between two layers that act as interfaces to the outside world (the input and output layer).].
@@ -445,27 +447,27 @@ The magnitude of this update is determined by the _step size_, which depends on 
   placement: auto,
 ) <fig-weight-update>
 
-== Anchor Regression <section-anchor-regression>
+== Weighted centroid regression <section-weighted-centroid-regression>
 
-Anchor regression is a hybrid of regression and classification. The concept behind it is not new, as several papers introduced it under different names like _regression by classification_, _binned regression_ and  #cite(<BibRegressionByClassification>),
+Weighted centroid regression (WCR) is a hybrid of regression and classification. The concept behind it is not new, as several papers introduced it under different names like _regression by classification_, _binned regression_ and ... #cite(<BibRegressionByClassification>), but I decided to call it WCR because the name [to vystihuje najlepšie že čo to robí].
 
-The core idea is simple: instead of a single output neuron predicting a scalar value directly, the output layer consists of multiple neurons, each corresponding to a fixed point on the number line called an _anchor_. The model produces a logit for each anchor, which are normalized into probabilities $p_i$ via softmax. The final prediction is then the expected value over all anchors:
+The core idea is that instead of a single output neuron predicting a scalar value directly, the output layer consists of multiple neurons, each corresponding to a fixed point on the number line called an _centroid_. The model produces a logit #TODO[explain what a logit is before] for each centroid, which are normalized into probabilities $p_i$ via softmax. The final prediction is then the expected value over all centroids:
 
 $
-  hat(x) = sum_i p_i a_i,
+  #nnoutput(i: 1) = sum_i p_i a_i,
 $
 
-where $a_i$ are the anchor positions. This lets the network express uncertainty naturally -- if the true value lies between two anchors, the network can assign probability mass to both. A common parameterization starts with $D$ divisions of the interval $[0, 100]$. The number of anchors is:
+where $a_i$ are the centroid positions. This lets the network express uncertainty naturally -- if the true value lies between two centroids, the network can assign probability mass to both. A common parameterization starts with $D$ divisions of the interval $[0, 100]$. The number of centroids is:
 
 $ A = D + 1 $
 
-and the anchors are placed as evenly-spaced points across the interval:
+and the centroids are placed as evenly-spaced points across the interval:
 
 $
   a_i = i dot (100 - 0) / (A - 1) = i dot 100 / (A - 1) quad "for" quad i = 0, 1, ..., A - 1
 $
 
-For $D=5$ divisions, we get $A=6$ anchors evenly spaced from 0 to 100.
+For $D=5$ divisions, we get $A=6$ centroids evenly spaced from 0 to 100.
 
 #figure(
   number-line(
@@ -473,9 +475,9 @@ For $D=5$ divisions, we get $A=6$ anchors evenly spaced from 0 to 100.
     start: -25,
     end: 125,
   ),
-  caption: [Anchor placement for $A=6$ anchors evenly distributed over $[0,100]$.],
+  caption: [Centroid placement for $A=6$ centroids evenly distributed over $[0,100]$.],
 )
-The exact placement of anchors -- for example, whether to extend them slightly beyond the valid range -- is a design choice evaluated in the experiments section.
+The exact placement of centroids -- for example, whether to extend them slightly beyond the valid range -- is a design choice evaluated in the experiments section.
 
 #figure(
   diagram(
@@ -517,21 +519,131 @@ The exact placement of anchors -- for example, whether to extend them slightly b
       dlayer(4, start-y, end-y, [Probabilities])
     },
   ),
-  caption: [A diagram of the structure of a neural network for binned regression. The last layer contains $C$ neurons, and each one of them produces an output value called _logits_. These logits are then fed into the softmax function to produce a set of probabilities.],
+  caption: [A diagram of the structure of a neural network for weighted centroid regression. The last layer contains $C$ neurons, and each one of them produces an output value called _logits_. These logits are then fed into the softmax function to produce a set of probabilities.],
 )
 
 This approach has been validated in practice. #cite(<BibDexAgeRegression>, form: "prose") applied it to age estimation from images, using 101 output neurons — one per year from 0 to 100 — and found it outperformed a single-neuron regression baseline.
-#cite(<BibMohanedPairwise>, form: "author") introduced a closely related formulation under the name binned regression in the unpublished manuscript Learning Glyph Value Estimation via Pairwise Comparison, using the term centroids for what we call anchors here. We prefer anchor regression because the mechanism has no inherent notion of bins — the output neurons represent fixed points, not intervals — and anchor more accurately reflects their role as reference points that the prediction is pulled toward.
+#cite(<BibMohanedPairwise>, form: "author") introduced a closely related formulation under the name binned regression in the unpublished manuscript Learning Glyph Value Estimation via Pairwise Comparison, using the term centroids for what we call centroids here. We prefer weighted centroid regression because the mechanism has no inherent notion of bins — the output neurons represent fixed points, not intervals — and centroid more accurately reflects their role as reference points that the prediction is pulled toward.
 
 == Convolutional Neural Networks (CNNs)
 
-This is a special neural network type which uses a process called "convolution". They are mostly used for image processing and prediction,
+Convolutional neural networks, or CNNs for short, are a specialied type of neural network that is designed to process input data that comes in a sort of grid-like shape/array shape. For example, 1 dimensional time data, or 2D images #cite(<BibDeepLearningLeCun>) #cite(<BibDeepLearningBook>). Unlike a multi-layer perceptron #TODO[mention MLP in chapters before], it processes the data using a mathematical operation called convolution in at least one of its layers. I am just going to summarize how convolution works, but I highly recommend the article called _A guide to convolution arithmetic for deep learning_ by #cite(<BibConvolutionArithmetic>, form: "prose"), or Stanford University's CS231n courses materials on CNNs #footnote[https://cs231n.github.io/convolutional-networks/].
+
+Convolutional neural networks have so-called convolutional layers. These layers work by sliding a rectangle of a certain size called a _kernel_ across the input data. This kernel contains a weight inside each of its cells. So, a $m times n$ kernel will contain $m times n$ weights. When sliding the kernel across the input data, each of the cells in the kernel gets multiplied by each of the cells from the input data underneath the kernel. All of the results of these multiplications are added to the final resulting scalar that is passed in the output. The exact math is not important here, what is important is that these kernels have the weights and those weights are the smartness of the network. These weights are what's changing when the network is learning. At the end of training, these kernels should have shapes that should detect certain patterns in the input data. The kernels can for example become edge detectors, which means that the output produces by applying the filter to the input will have high numbers where certain edges are, and low numbers everywhere else.
+
+#figure(
+  image("fig/img/kernels.jpg", width: 100%),
+  caption: [Example taken from #cite(<BibImageNetClassification>, form: "prose") of how trained filters can look like. At the top, we can see a bunch of edge detectors. Some detect horizontal edges, some vertial edges, and some diagonal ones. At the bottom, there are filters that learned to detect checkerboard patterns, or certain specific circular patterns.],
+  placement: auto,
+)
+
+=== Pooling Layers
+
+In a neural network, we also have pooling layers that can go in between convolutional layers. These layers perform an operation called _pooling_. While there are many different pooling operations like Average Pooling, L2 Norm Pooling, Weighted Average Pooling, or Stochastic Pooling #cite(<BibDeepLearningBook>). In my case, I used Max Pooling, which is a specific type of pooling operation used in CNNs that replaces the output of the network at a given location with the maximum value from a nearby rectangular neighborhood of neurons #cite(<BibDeepLearningBook>) #cite(<BibDeepLearningLeCun>). It works by sliding a window (often of the size $2 times 2$ or $3 times 3$) across the feature map (the input to the layer) and selecting only the highest activation value inside that window to pass to the next layer. The reason for the MaxPooling layer choice was that it's the most common pooling layer and it has a history of working well in various ANN designs.
+
+#figure(
+  image("fig/img/max-pool.png", width: 100%),
+  caption: [Diagram showing how a $2 times 2$ maxpool filter with a stride of 2 converts a $4 times 4$ feature map to a $2 times 2$ ... (credit: CS231n Stanford Lecture Notes #footnote[https://cs231n.github.io/convolutional-networks/#pool])],
+  placement: auto,
+)
+
+== Architecture of the Neural Network Chosen
+
+The layers inside a neural network are usually chosen carefully and combined in a strategic way. This combination of layers is what's called the _architecture_ of the neural network. Some examples of computer vision architectures include AlexNet, VGG-16 or LeNet-5 #cite(<BibImageNetClassification>) #cite(<BibDexAgeRegression>) #cite(<BibDeepLearningLeCun>). The layers that are used in my implementation are 2D convolutional layers, 2D max pooling layers, and linear fully-connected layers. At the end of each layer, you can also choose different activation functions and also regularization techniques like dropout.
+
+// nn.Conv2d(3, c1, kernel_size=3, padding=1),
+// nn.Conv2d(c1, c1, kernel_size=3, padding=1),
+// nn.ReLU(inplace=True),
+// nn.MaxPool2d(2),
+// nn.Conv2d(c1, c2, kernel_size=3, padding=1),
+// nn.Conv2d(c2, c2, kernel_size=3, padding=1),
+// nn.ReLU(inplace=True),
+// nn.MaxPool2d(2),
+// nn.Conv2d(c2, c3, kernel_size=3, padding=1),
+// nn.Conv2d(c3, c3, kernel_size=3, padding=1),
+// nn.ReLU(inplace=True),
+// nn.MaxPool2d(2),
+
+For the purposes of this thesis, I chose an architecture with convolutional layers at the beginning of the CNN, with MaxPool layers in between to gradually decrease the size of the feature map. The activation ReLU was used in in order to introduce nonlinearity.
+
+The neural network's parameter count (size) is slightly parametrized. We define a function:
+
+$ "scale"(b, M) = max(8, round((b dot M) / 8) dot 8) $
+
+where $M in RR$ is the multiplier of the original neural network's size, and $b in NN$ is the base count of channels, meaning the number of channels that corresponds to a multiplier $M = 1$. This function caps the minimum number of channels to 8, and keeps them as multiples of 8 for efficiency reasons #footnote[Since the training was done on an NVIDIA A5000, keeping the number of convolutional layer channels on a multiple of 8 is recommended by the official NVIDIA Deep Learning Performance Guide #cite(<BibNVIDIAPerformanceGuide>).].
+
+#figure(
+  diagram(
+    spacing: (10mm, 6mm),
+    {
+      let connector(start, end) = {
+        let start-label = label(str(start) + ".south")
+        let end-label = label(str(end) + ".north")
+        edge(
+          start-label,
+          (rel: (0, 1), to: start-label),
+          (rel: (0.5, 1), to: start-label),
+          (rel: (-0.5, -1), to: end-label),
+          (rel: (0, -1), to: end-label),
+          end-label,
+          "->",
+          corner-radius: 3pt,
+        )
+      }
+
+      let thing(pos, title, name: none, ..params) = {
+        let parameters = params.pos().join("\n")
+        node(
+          pos,
+          [*#title* \ #parameters],
+          fill: green-fill,
+          stroke: green-stroke,
+          inset: 4pt,
+          corner-radius: 4pt,
+          name: name,
+        )
+      }
+
+      thing(
+        (0, 0),
+        [2D Convolution],
+        name: <conv1a>,
+      )
+      edge("->")
+      thing((0, 1), [2D Convolution])
+      edge("->")
+      thing((0, 2), [ReLU])
+      edge("->")
+      thing((0, 3), [2D Max Pool], name: <pool1>)
+
+      connector(<pool1>, <conv2a>)
+
+      thing((1, 0), [2D Convolution], name: <conv2a>)
+      edge("->")
+      thing((1, 1), [2D Convolution])
+      edge("->")
+      thing((1, 2), [ReLU])
+      edge("->")
+      thing((1, 3), [2D Max Pool], name: <pool2>)
+    },
+  ),
+  caption: [Full layer-by-layer graph of the CNN stack used in the experiments. #TODO[finish this diagram]],
+  placement: auto,
+) <fig-cnn-architecture-graph>
+
+
 
 = Development Environment & Infrastructure
 
-#TODO[here i actually explain uv, environment setup, clearml, papermill...]
+#TODO[here i actually explain uv, environment setup, clearml, papermill... then my actual neural network code and the training loop code. And how I put the important code inside `src/` and have that as a library that's imported into the jupyter notebooks.]
 
-== Development Enviromnment: `pip`, `poetry` and `uv`
+=== Choosing The Right Backend
+
+I evaluated three machine learning frameworks (backends) for this project, specifically scikit-learn, TensorFlow, and PyTorch. While scikit-learn is a primary tool for classical machine learning, it is not designed as a deep learning framework and I therefore excluded it from the selection process. In choosing between PyTorch and TensorFlow, recent data shows a divide in their use case: while TensorFlow maintains a slight lead in industrial adoption (55% vs. 45%), PyTorch dominates the research landscape with an 80% adoption rate compared to TensorFlow's 20% #cite(<BibPytorchVsTensorflow>). PyTorch is favoured in research because of its imperative, "define-by-run" philosophy, which is favored by researchers due to its intuitiveness.
+
+Secondly, the work of this thesis is based off of the unpublished manuscript _Learning Glyph Value Estimation via Pairwise Comparison_, where they also used PyTorch, so it was easier to extend their solution that was already written in PyTorch #cite(<BibMohanedPairwise>).
+
+== pip vs. Poetry vs. uv
 
 I was choosing between pip, Poetry, and uv.
 
@@ -562,7 +674,6 @@ idk if i wanna mention anything else about uv... #TODO[find out if mentioning an
 I am using the file `.env` located in the root of the project. This file can be created by creating a copy of the `.env.template` file. This file is useful because it isn't committed to the Git repository and thus stays on the developer's machine and the developer can specify their own machine-specific settings. In my case, there's only a single setting located in the .env file, and that is:
 
 - `MGML_DEVICE`: It's used to specify the device for training
-- #TODO[maybe other shit]
 
 
 == Software Architecture:
@@ -925,7 +1036,7 @@ This experiment aims to answer questions garding the NN's capability to interpol
 
 == Experimenting With Centroids <section-centroid-experiments>
 
-As I mentioned previously in @section-anchor-regression, centroids are the building block of binned regression. In this section, I focus on empirical choices around their placement and count.
+As I mentioned previously in @section-weighted-centroid-regression, centroids are the building block of binned regression. In this section, I focus on empirical choices around their placement and count.
 
 === Finding The Optimal Number Of Centroids
 
@@ -994,3 +1105,7 @@ Me and prof. Herout hypothesized that it could be because the centroids at the e
 Sometimes, when I run the base experiment, it still gets large losses at the edges of the interval (at x=0 and x=100). I am really not sure why this happens,
 
 Idk I am kinda sad that I didn't have more time to create more experiments, because I was mostly busy making the toolset for creating these experiments. However, on the bright side, the toolset is right now pretty mature and I was able to create these couple of experiments in a matter of hours. Of course, the framework always needs improvements, but it's pretty solid and it can definitely be used to set up new experiments easily.
+
+Try our different neural network architectures: not just the Max Pool, but also AvgPool, L2 Norm Pool. Some of them might work better with the currect architecture.
+
+Try to fix the regression. I have no idea why it doesn't work.
