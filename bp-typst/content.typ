@@ -631,6 +631,10 @@ where $M in RR$ is the multiplier of the original neural network's size, and $b 
   placement: auto,
 ) <fig-cnn-architecture-graph>
 
+== No Label Normalization
+
+#TODO[explain that I was using normalized labels from 0..100 to 0..1, but it was completely useless, the NN is able to predict values from 0 to 100 no problem.]
+
 = Development Environment & Infrastructure
 
 This chapter covers the details of the development environment used for machine learning, gives an overview of the codebase, and explains the design decisions that went into choosing the dependencies of the project.
@@ -729,62 +733,59 @@ The initial architecture for this research was designed around ClearML pipelines
 
 Another reason for abandoning the pipeline approach was the complexity of the entire system. Just like the HPO, the pipelines are also incompatible with Jupyter notebooks, forcing the developer to use plain `.py` files instead. This completely removes interactivity, makes debugging more challenging, and slows down the entire development feedback loop. So, ultimately, ClearML pipelines provide little benefit for the scope of this research.
 
+=== Other Trouble With ClearML
+
+During the work on the library, I hit multiple roadblocks with ClearML. I believe it's important to discuss them in order to prevent future time wasted on the same issues.
+
+First of all, ClearML is a very complex system, offering many features. While these features are useful for large MLOps operations, in the context of this research, they just add unneccesary complication. If the running time of a single task doesn't exceed a total time of a couple of minutes, it's not necessary to introduce multiple experiment-running agents, pipelines, datasets, workers, queues.
+
+Secondly, ClearML has an extensive documentation available on their website #footnote[https://clear.ml/docs/latest/docs/]. This documentation answers many questions, however, since ClearML is not a popular and well-discussed project online (at the time of writing, it has 6.7k stars on GitHub), it can be challenging to find answers to questions on developer forums like StackOverflow. However, a useful tool that answered many of my questions was DeepWiki #footnote[https://deepwiki.com/clearml/clearml], which is an AI-powered agent that has the indexed repository in its context, and it's able to search the repository's code and answer questions. If no answer is found there, ClearML has a Slack support channel #footnote[https://clearml.slack.com] where ClearML developers answer questions.
+
+Next, while 1GB of metrics storage might sound like enough, uploading multiple plots with thousands of points fills the metrics storage quickly. And unfortunately, the ClearML WebUI only warms about the metrics storage being full, it doesn't give any detailed insights as to which tasks specifically are taking up the space.
+
+Lastly, my supervisor tried installing the ClearML server locally, since it is fully open-source under the Apache license, but he noted that it was a "significant pain" and that the installation "laughed in his face". So, instead, he also opted for the hosted solution for basic reporting.
+
 == The Final Approach Using Papermill
 
-Finally, I decided to adopt a much simpler approach to running experiments. prof. Herout recommended to me that he uses a Python parameter injection library called Papermill #footnote[https://papermill.readthedocs.io/en/latest/]. If one wants to use papermill, this is what you gotta do:
-- install Papermill as one of the project's dependencies
-- label one cell in your Jupyter notebook with the tag "parameters" (yes, Jupyter cells can be tagged)
-- use the command:
+After the failure with the ClearML pipelines, my supervisor proposed to me an alternative, simpler approach. Instead of using ClearML as a task orchestration framework, I was recommended to only use it for simple monitoring purposes and to use a Python library called Papermill #footnote[https://papermill.readthedocs.io/en/latest/]. It's a parameter injection library for Jupyter notebooks.
+
+The Papermill workflow works by utilizing a Jupyter notebook feature called _cell tags_. One cell in a Jupyter notebook is tagged with the name `parameters`, and it acts as the default configuration. Then, Papermill is able to inject a new artificial cell right after the `parameters` cell which contains a partial rewrite of the default parameters.
+
+For example if the `parameters` cell contains this code:
+
+```py
+a = 42
+b = "Hello"
+```
+
+And we invoke Papermill as follows:
+
 ```shell-unix-generic
-papermill input-notebook.ipynb output-notebook.pynb -p a 42 -p b 'value of b'
-``` #TODO[i dont like this formatting of the code]
-- wait for papermill to finish and the executed notebook with the injected parameters will be available in `output-notebook.ipynb`.
+papermill input-notebook.ipynb output-notebook.ipynb -p b 'world!'
+```
 
-Papermill works by simply inserting a new artificial cell into the notebook rigt after the `parameters`-tagged cell. This cell simply contains for this example two lines: ```py a=42``` and ```py b='value of b'```. When the notebook is run, the cell after the `parameters` cell simply overrides the global variables defined in the `parameters` cell. In practice, I do not call Papermill directly. Instead, I use a small convenience wrapper script called `convert-notebook.sh` #footnote[Credit: prof. Herout], which standardizes the command-line interface for all experiments. The script automatically handles output placement and naming, sanitizes run names, and converts `key=value` arguments into the correct Papermill `-p` format. This reduces repetitive boilerplate, keeps experiment outputs consistently organized in a nice `out/` directory, and helps with naming each experiment by a unique name that usually contains the names and values of varied parameters for that specific experiment.
+The Jupyter notebook will contain an extra cell redefining the global variable `b`, making the code:
 
-== Trouble With ClearML
+```py
+a = 42
+b = "Hello"
 
-During my work on the bachelor's thesis, i hit multiple roadblocks when using clearml. I think it's important to mention all of the roadblocks here, so that the future person working on this won't hit the same roadblocks.
+b = "world!"
+```
 
-First of all, clearML is VERY complex. There are agents, pipelines, datasets, tasks, workers, queues... Every one of these components has a gazillion parameters that have to be tweaked for the system to work correctly.
-
-ClearML has a pretty extensive documentation #footnote[https://clear.ml/docs/latest/docs/], but since ClearML is not very popular as an MLops platform, not a lot of questions about clearml can be found on the open web (like stackoverflow and such). So, you simply gotta read through the documentation and learn for yourself. Many things are not well described in the docs, and you need to dig through the source code to find the information you need. I found a useful tool called DeepWiki #footnote[https://deepwiki.com/clearml/clearml] which has thousands of Git repositories indexed (including the ClearML one) and is able to answer questions about the library with answers grounded in references to the source code. They also have a Slack channel #footnote[https://clearml.slack.com], where the employees answer questions.
-
-
-2. Failure of the Pipeline Approach
-Ultimately, you felt you didn't truly understand the system despite the time invested. You noted that the pipelines never reached a state where you were satisfied or where they functioned reliably. Consequently, you reverted your code by about 15 commits, discarded the pipeline branch, and switched to what you called a "braindead method"—which worked for your needs.
-3. Shift to Alternative Orchestration (Papermill)
-Because of the friction with ClearML's native optimization tools, you shifted your strategy for running multiple experiments:
-
-Instead of ClearML pipelines, you used Papermill to inject parameters into your Jupyter notebooks.
-You managed these runs manually on the "Sophie" server using tmux, allowing you to run batches while you slept without relying on ClearML's orchestrator.
-
-4. Resource and Storage Constraints
-Even while using ClearML just for logging, you encountered further issues:
-
-Metric Storage Limits: You eventually hit the 1GB storage limit for metrics on the ClearML free tier.
-Maintenance Overhead: You had to spend time deleting old experiment history just to keep the system running, which discouraged keeping a long history of hyperparameter trials.
-
-5. Supervisor's Own Struggles
-It is worth noting that your supervisor, Herout, also attempted to install a local ClearML server and concluded that it was a significant "pain," eventually admitting that the installation "laughed in his face." This reinforced the decision to stick to the hosted version for basic reporting rather than trying to build a complex, local optimization cluster.
-
-== No Label Normalization
-
-#TODO[explain that I was using normalized labels from 0..100 to 0..1, but it was completely useless, the NN is able to predict values from 0 to 100 no problem.]
+Papermill will also run the `input-notebook.ipynb` notebook file and output the executed notebook in the `output-notebook.ipynb` file. However, during the experiments, Papermill is not called directly. Instead, a small wrapper script written by prof. Herout called `convert-notebook.sh` is used, which standardizes how experiments are executed and named. The script accepts a notebook path followed by any number of `key=value` arguments, converts them into Papermill `-p key value` flags, and decides whether to execute via Papermill (when at least one parameter is provided) or via `jupyter nbconvert --execute` (when no parameters are present). It also enforces consistent output naming: it's possible to pass a parameter `--name=SUFFIX` explicitly, or if `experiment_name=...` is provided, that value becomes the suffix; otherwise the script builds a suffix from all parameters joined with `+`. The suffix is sanitized to be filesystem-safe (only letters, numbers, and `._+=-` are preserved), and every executed notebook is placed into an `out/` folder next to the input notebook as `original-name-SUFFIX.ipynb`. This keeps experiment outputs organized, reduces boilerplate, and makes each run easy to identify by its parameters. Examples of the usage of this script are shown in @section-own-experiment.
 
 = Creating High-Quality Datasets <chapter-creating-datasets>
 
-This chapter explains the basics of the `mglyph` library, and later explains how the library can be used for the creation of high quality datasets that can be used in experiments.
+This chapter explains the basics of the mglyph library, and later explains how the library can be used for the creation of universal datasets that can be used in various experiments.
 
-== The `mglyph` Python Library
+== The mglyph Python Library
 
-The manual creation of malleable glyphs might prove challenging. Generating and packaging thousands of images in a strict output format is inherently repetitive and labor-intensive. One of the primary motivations behind the `mglyph` Python library was therefore to abstract this complexity away from the glyph designer and make the process of creating and distributing glyphs as frictionless as possible.
+The manual creation of malleable glyphs might prove challenging. Generating and packaging thousands of images in a strict output format is inherently repetitive and labor-intensive. One of the primary motivations behind the `mglyph` Python library was therefore to abstract this complexity away from the glyph designer and make the process of creating and distributing glyphs as easy as possible.
 
-The library is published on PyPI #footnote[https://pypi.org/project/mglyph/] under the name `mglyph`. It is open-source, and its source code is available on GitHub #footnote[https://github.com/adamherout/mglyph]. In practice, it serves as a framework for designing, generating, and distributing malleable glyphs. Its core is implemented in Python, a widely adopted language with which many developers are already familiar. Python's syntax also offers the flexibility required for a library of this kind.
+The library is published on PyPI #footnote[https://pypi.org/project/mglyph/] under the name `mglyph`. It is open-source, and its source code is available on GitHub #footnote[https://github.com/adamherout/mglyph]. In practice, it serves as a framework for designing, generating, and distributing malleable glyphs. Its core is implemented in Python, a widely adopted language with which many developers are already familiar. Python's syntax also offers the flexibility required for a library of this kind. For a comprehensive and detailed guide on the creation of malleable glyphs, I recommend starting at the tutorial that's linked in the mglyph repository's `README.md` file. The tutorial showcases what's possible, illustrating many interesting ideas and techniques. After reading the tutorial, it's possible (and recommended) to tweak some parameters in order to see the effect they have on the glyphs.
 
-When one wishes to create their own malleable glyphs, it's best to start at the tutorial that's linked in the repository's `README.md` file. The tutorial showcases what's possible, illustrating many interesting ideas and techniques. After reading the tutorial, one can tweak some parameters to see how the glyphs react.
-
-At the core of any glyph is a _drawer_ function. In `mglyph`, `Drawer` is a `Callable` a.k.a. function with the following signature:
+At the core of any glyph is a _drawer_ function. In the mglyph library, `Drawer` is a `Callable` (a function) with the following signature:
 
 ```py
 type Drawer = Callable[[float, Canvas], None]
@@ -802,7 +803,9 @@ def simple_circle(x: float, canvas: mg.Canvas) -> None:
 
 A `mg.Drawer` takes two parameters: a `float` and an `mg.Canvas`. In Python, both arguments are passed by assignment (object reference): `x` is an immutable numeric value, while `canvas` is a mutable object that the function can draw into. In this example, the radius is computed by linearly interpolating $x in [0.0, 100.0]$ onto $[0.0, "canvas.xsize" / 2]$. The canvas size is 2.0, but it is better to express dimensions relatively. This makes the design intent clearer and keeps the glyph definition readable. Here, the circle radius spans from 0.0 to half of the canvas width (`xsize`), so it grows from a point to edge-to-edge.
 
-Now that the `mg.Drawer` (```py simple_circle()```) is defined, we need a way to see what the glyph actually looks like with different values of $x$. Thankfully, the creators of the `mglyph` library provided multiple ways to visualize the glyphs. One of the most important functions is the ```py show()``` function. It allows us to see what the glyph looks like with different values of $x$ passed down to the function. It accepts many parameters, but here are the two most important ones:
+=== The `mg.show()` Function
+
+Now that the `mg.Drawer` (```py simple_circle()```) is defined, we need a way to see what the glyph actually looks like with different values of $x$. The mglyph library provides multiple ways to visualize the glyphs. One of the most important functions is the ```py show()``` function. It allows us to see what the glyph looks like with different values of $x$ passed down to the function. This function accepts many parameters, but the two most important ones are `drawer` and `x`:
 
 ```py
 def show(
@@ -812,19 +815,38 @@ def show(
 )
 ```
 
-The exact mechanisms behind ```py show()``` for the purposes of this work are not important. However, it is important to understand how the `mg.Drawer` is used by the `mglyph` library.
+After invoking ```py show(simple_circle)```, a visualization is shown:
+
+#figure(
+  image("fig/glyphs/simple-circle.png", width: 100%),
+  caption: [A visualization showing the result of calling ```py show(simple_circle)``` with 5 different values of $x$.],
+)
 
 #figure(
   image("fig/diagrams/show-function.drawio.svg", width: 100%),
-  caption: [Diagram of the inner workings of the ```py show()``` function from the `mglyph` library. For every $x$ that gets passed into ```py show()```, it instantiates a new `mg.Canvas`, and passes it down to the ```py drawer()``` so that it can draw the glyph based on the passed argument `x`. #TODO[this diagram needs shadows and nicer arrows... make it nicer u know]],
-  placement: top,
+  caption: [Diagram of the inner workings of the ```py show()``` function from the `mglyph` library. For every $x$ that gets passed into ```py show()```, it instantiates a new `mg.Canvas`, and passes it down to the ```py drawer()``` so that it can draw the glyph based on the passed argument `x`.],
+  placement: auto,
 )
 
-#TODO[much more needs to be explained about the library... we need some basic glyph creation examples maybe]
+=== Exporting Glyph Sets
+
+The library also offers an ```py export()``` function which handles the export of a glyph set:
+
+```py
+mg.export(
+    drawer=simple_circle,
+    name='Simple Circle',
+    short_name='simple_circle',
+    author='Jane Doe',
+    email='jane@example.com',
+)
+```
+
+This function is used to export glyphs for the Malleable Glyph Challenge, however, it should not be confused with the ```py export()``` function from a ```py _DatasetBuilder``` which is used for creating datasets for machine learning and is explained later in this chapter.
 
 == Inside The `.mglyph` Dataset File
 
-I would define a dataset as a collection of samples that can be used to train, validate, and test a neural network in some way. I decided to represent a dataset as a single file with the extension `.mglyph` that contains all the samples that can be used by the person designing the experiment. It's essentially just a ZIP file disguised under a different file extension. The structure of the ZIP file is as follows:
+A dataset in the context of this thesis is defined as a collection of samples that can be used to train, validate, and test a neural network in some way. A dataset is stored on the disk in a file with the extension `.mglyph`. This file is a compressed ZIP file (without the `.zip` extension) that contains all the samples that were exported into it. Here's a visualization of how the contents of this dataset file are organized:
 
 // idk what the 't' stands for but it provides the exact syntax highlighting I need lol
 ```t
@@ -832,12 +854,11 @@ dataset.mglyph
 ├── manifest.json
 ├── 0000.png
 ├── 0001.png
+├── 0002.png
 └── ...
 ```
 
-It contains a file called `manifest.json`, which contains all the information about the dataset, the author of the dataset, and the glyphs contained in the dataset, and it also contains all the glyphs rendered as PNG files numbered in a fashion starting from 0000.png (the number of digits depends on the total number of glyphs, so for datasets containing less glyphs, the number can be 2 or 3 digits, and for datasets containing 100 000 samples, it will be 6 digits).
-
-Let's dig a little bit into the `manifest.json` file. An example of how such a file might look like is shown here:
+The dataset file contains a `manifest.json` file with metadata about the dataset, its author, and the glyphs it includes. The `.mglyph` file also stores the rendered glyphs as PNGs numbered from 0000.png; the digit count scales with dataset size (for smaller datasets it can be 2 or 3 digits, while #box[100 000] samples uses 6 digits). The `manifest.json` file has the following structure:
 
 #raw-annot(
   (line: 2, symb: [1], label: <code-manifest-name>),
@@ -871,7 +892,7 @@ Let's dig a little bit into the `manifest.json` file. An example of how such a f
 }
 ```
 
-At line @code-manifest-name, we can see inside the JSON the name of the dataset. This name can be as long as you need, and should reflect exactly what's inside the dataset. On line @code-manifest-creation-time, we store the time the dataset was created. This might be helpful if you create a dataset and forget about it and then later need to pinpoint exactly when and why you created it in the first place. It's stored as an ISO 8601 timestamp. Next, at line @code-manifest-samples, we have a JSON object called "samples" which contains key-value pairs that represent so-called _splits_. A split is a kind of a folder inside a dataset. We can divide the samples into these "folders" and then access the samples in each folder individually. A sample always belongs to one and only one split. Putting a single sample into multiple splits is not supported, but there isn't really a reason for us to do so, as the splits are usually used to separate training and testing data, and these two groups are mutually exclusive (they shouldn't have any overlap). Then, every split is a JSON list that contains objects of type ```py ManifestSample```. This object is defined in Python in the following way:
+At line @code-manifest-name, the dataset name is shown in the JSON. The name can be arbitrarily long, and it should reflect exactly what is contained inside the dataset. On line @code-manifest-creation-time, the dataset creation time is recorded. This can be helpful if a dataset is created and later needs to be traced back to when and why it was produced. It is stored as an ISO 8601 timestamp. Next, at line @code-manifest-samples, a JSON object called `"samples"` is defined, and key-value pairs are used to represent so-called _splits_. A split is essetially a directory inside the dataset. Samples can be divided into these splits and splits can be accessed individually. Each sample can only be part of one and only one split. Placing a single sample into multiple splits is not supported, but there is little reason to do so, because splits are typically used to separate training and testing data and these two groups are mutually exclusive (they should not overlap). Each split is stored as a JSON list that contains objects of type ```py ManifestSample```. This object is defined in Python in the following way:
 
 ```py
 class ManifestSample(BaseModel):
@@ -880,15 +901,15 @@ class ManifestSample(BaseModel):
     metadata: dict
 ```
 
-Note that I used the Pydantic Python library for defining the manifest. This is super handy because Pydantic takes care of all the JSON parsing and validation and makes everything in the code type-safe (i get nice hints in my IDE when working with typed objects instead of classic Python ```py dict```s). Every sample that is in the dataset has its instance of ```py ManifestSample``` when the dataset is loaded. This sample is composed of the label of the sample `x`, the `filename` of the file where the sample located within the `.mglyph` dataset file, and a `metadata` dictionary. This is a key-value based structure where the creator of the dataset can embed special data about each glyph. This can be useful for example when your dataset contains multiple types of glyphs and you need to filter them out at training time or testing time.
+The Pydantic Python library was used to define the manifest. JSON parsing and validation are handled by Pydantic, and type safety is enforced across the codebase (which results in better IDE hints compared to plain Python ```py dict```s). When a dataset is loaded, each sample is represented by a ```py ManifestSample``` instance. Each instance is composed of the sample label `x`, the `filename` of the file where the sample is stored within the `.mglyph` dataset, and a `metadata` dictionary. This dictionary is a key-value structure where special glyph data can be embedded, which is useful when multiple glyph types are present and filters are needed during training or testing.
 
 == Creating a New Dataset
 
-So, you decided that you want to build your own dataset. The first prerequisite is having a glyph that you wanna put into the dataset. When I am talking about a glyph, I am in reality talking about a `Drawer`. You need a `Drawer`. After you have a `Drawer` that can successfully draw a glyph in a reasonable about of time, you can go onto the next step. You can create a dataset in two ways.
+When a new dataset is built, the first prerequisite is a glyph that can be placed into the dataset. In this context, a glyph is an implementation of `Drawer`. Since this function will be called thousands of times (depending on the size of the dataset, but #box[20 000] is a normal number of glyphs inside a dataset), the execution time of the glyph drawing function cannot be too large. The dataset exporting function is at the moment not parallelized, so the glyphs are rendered one-by-one.
 
 === Creating Dual Datasets
 
-The first (and much simpler) way to create a dataset is by invoking the ```py create_and_export_dual_dataset()``` function from the `mglyph_ml.export` module. This function handles the creation of a very standard dataset type, which I called the _dual_ dataset. It's called _dual_ because it contains two splits, named "0" and "1". The reason why this type of dataset is used often is that we usually have one set of glyphs which are used for the training of the NN, and we have a separate set of glyphs which are used for the testing (for more info see @section-train-val-test). We simply provide the function with the `Drawer`, tweak a couple of basic parameters, and we have a new dataset ready to be used in an experiment:
+The first (and simplest) way to create a dataset is to invoke the ```py create_and_export_dual_dataset()``` function from the `mglyph_ml.export` module. This function creates a standard dataset type I called the _dual_ dataset. I called it _dual_ because it contains two splits, named "0" and "1". I commonly use this layout because the first split is typically used for training and the other one for testing (see @section-train-val-test). When calling the ```create_and_export_dual_dataset()``` function, it needs to be provided with a `Drawer` and a few other parameters:
 
 ```py
 create_and_export_dual_dataset(
@@ -899,11 +920,11 @@ create_and_export_dual_dataset(
 )
 ```
 
-This single function creates the dataset at the specified path, using the specified drawer, and generates `n_samples` samples in _each_ split (so in this case, 20 000 samples get generated, 10 000 in each split). It's also important to note that this function doesn't generate the samples uniformly across the entire interval $[0.0, 100.0]$. Instead, it generates `n_samples` random floating point numbers between 0 and 100 and generates the glyphs from these values. After a discussion with my supervisor, we concluded that this method is better because it gives the NN more variety in the data. Instead of only seeing values like 0.1, 0.2, 0.3, 0.4, ..., it sees values like 0.1032, 0.1563, 0.2315, ... .
+The dataset is created at the specified path using the provided `Drawer`, and `n_samples` samples are generated in _each_ split (so in this case, 20 000 samples are generated, 10 000 per split). It should also be noted that samples are not generated uniformly across the interval $[0.0, 100.0]$. Instead, `n_samples` random floating-point values between 0 and 100 are drawn and glyphs are generated from those values. This approach was preferred after discussion with my supervisor because more variety is introduced into the data; instead of only values like 0.1, 0.2, 0.3, 0.4, ..., values like 0.1032, 0.1563, and 0.2315 are also included.
 
 === Creating Custom Datasets
 
-If the dual dataset doesn't fulfill your needs, no need to worry! You can also create a dataset completely manually using a `DatasetBuilder` using the builder pattern. Here's a code sample demonstrating how to create a simple dataset manually:
+If the dual dataset is not sufficient, a dataset can also be created manually using a `_DatasetBuilder` with the builder pattern. A simple example is shown below:
 
 #raw-annot(
   (line: 1, symb: [1], label: <code-dataset-builder-create>),
@@ -919,19 +940,20 @@ for x in xvalues_train:
 dataset.export(path=Path("single-split-simple-star-uniform.mglyph"))
 ```
 
-Firstly, we create the dataset at @code-dataset-builder-create using the ```py create_dataset()``` function. This function returns a ```py _DatasetBuilder``` object, which we can use to set up the dataset before we export it at @code-dataset-builder-export. After creating the builder object, we use the ```py np.linspace()``` function to generate values in a uniform fashion across the entire interval of 0..100 @code-dataset-builder-linspace. When we want to add a new sample into the dataset, we invoke the ```py _DatasetBuilder.add_sample()``` method, specifying the `drawer`, the value of `x` and the `split` where to put the sample. All of these parameters are required. Note that we specify the drawer for every single glyph we add to the dataset. This is super useful because this means that we can put multiple types of glyphs into a single dataset. On that same line, we also add metadata to the sample using the `metadata` parameter of the ```py add_sample()``` method. In this case, it's not really necessary, because every single glyph in the dataset will get the same metadata, which kinda defeats the purpose of the metadata, which is to defferentiate different glyphs in the dataset. But I added it to this example so that you can see how it's done. Lastly, we export the dataset on line @code-dataset-builder-export, specifying the `path`. After running this code, a new file called `single-split-simple-star-uniform.mglyph` will get created in the current working directory.
+First, the dataset is created at @code-dataset-builder-create using the ```py create_dataset()``` function. A ```py _DatasetBuilder``` object is returned and is used to configure the dataset before it is exported at @code-dataset-builder-export. After the builder is created, values are generated uniformly across the interval $[0.0, 100.0]$ using ```py np.linspace()``` at @code-dataset-builder-linspace. When a new sample is added, the ```py _DatasetBuilder.add_sample()``` method is called with the required parameters: `drawer`, the value of `x`, and the target `split`. The `drawer` is specified for every glyph, which allows multiple glyph types drawn by multiple drawers to be stored in a single dataset. Metadata is also attached via the `metadata` parameter. In this example it is not strictly necessary because the metadata is the same for every glyph, but it is included to demonstrate the mechanism. Finally, the dataset is exported at @code-dataset-builder-export by specifying the `path`. After the code is run, a file named `single-split-simple-star-uniform.mglyph` is created in the current working directory.
 
 === Training vs. Validation vs. Testing <section-train-val-test>
 
 #TODO[maybe separate section? idk where to put this] \
 Just a quick reminder on what the difference between a _training_, _validation_ and _test_ set is. In the context of malleable glyphs, we need a set of glyphs that are used to train the neural network. We can also take glyphs from the same set to kind of "steer" the training in the right direction. An example of this "steering" would be to check every $n$ steps or every $m$ epochs how the training is going by letting the neural network predict a couple labels. We could then use this information during the training to either reduce the learning rate, change the optimizer, or make some other decisions. This is totally okay. However, what is not okay is using _any_ of the data that has been used in some way during the training (even if the NN hasn't actually been trained on the data but it was only used for this 'steering'), we cannot use this data at the end of the training to validate how well a NN performs. This is why we need 2 sets of glyphs. The second split is used as a "testing" set at the end of the training to see how well the NN performs and this is the set that gives us information about how well the experient went.
 
+=== Advice For Creating Better Datasets
 
-#TODO[
-  - [ ] what makes a dataset reusable...
-  - [ ] link to some tutorials... we can't explain everything about the library here
+Firstly, I want to point out that label diversity is important. At first, I created datasets using ```py np.linspace()```, which produced uniform samples such as 0.00, 0.01, and 0.02. While this looks tidy, it is suboptimal for generalization because the network is exposed to very regular spacing between the samples. Better results are typically obtained when a truly random uniform distribution is used instead, with diverse values such as 0.042323 or 67.321521.
 
-]
+Next, a sufficient sample count is necessary for good results. A dataset should contain at least #box[10 000] samples, and better generalization is usually achieved when the sample count is in the tens of thousands. In practice, I found that a range of #box[20 000] to #box[50 000] samples seems to be a reliable sweet spot.
+
+Lastly, determinism should be preserved. When a dataset is created with the same parameters, the same samples should be generated. This keeps experiments consistent and ensures that a dataset can be reproduced by other users. For this reason, seeding is recommended, for example with ```py np.random.default_rng(seed)``` or ```py random.seed(seed)```.
 
 = Experiments With Malleable Glyphs <chapter-experiments>
 
@@ -1009,7 +1031,7 @@ Creating this perfect experiment proved much more difficult than anticipated. Fi
 
 #TODO[write about the fact that Pintea et al #cite(<BibClassificationHelpsRegression>) were exploring why classification loss helps with imbalanced data. Maybe propose that in the future Franta could try to explore if adding cross entropy loss to the MSE loss would work better than pure MSE.]
 
-== How Do I Design And Run My Own Experiment?
+== Running a Custom Experiment <section-own-experiment>
 
 First of all, we need a bit of curiosity. We need to as ourselves a question that we want answered regarding computer vision and malleable glyphs. Examples of such questions include:
 
