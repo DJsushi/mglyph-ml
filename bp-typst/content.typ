@@ -631,11 +631,23 @@ where $M in RR$ is the multiplier of the original neural network's size, and $b 
   placement: auto,
 ) <fig-cnn-architecture-graph>
 
-
-
 = Development Environment & Infrastructure
 
+This chapter covers the details of the development environment used for machine learning, gives an overview of the codebase, and explains the design decisions that went into choosing the dependencies of the project.
+
 #TODO[here i actually explain uv, environment setup, clearml, papermill... then my actual neural network code and the training loop code. And how I put the important code inside `src/` and have that as a library that's imported into the jupyter notebooks.]
+
+== Setting Up The Environment
+
+The codebase is managed using Git and is publicly available on GitHub under the name mglyph-ml #footnote[https://github.com/DJsushi/mglyph-ml].
+
+During development, I used Visual Studio Code on my local machine and connected to Sophie #footnote[Sophie is available under the address #link("ssh://sophie1.fit.vutbr.cz").], a remote supercomputer equipped with an NVIDIA RTX A5000 GPU, via SSH. I configured VS Code Remote Development by following the official tutorial from Visual Studio Code Remote SSH Documentation #footnote[https://code.visualstudio.com/docs/remote/ssh] and cloned the repository directly from GitHub onto Sophie. This setup installs a VS Code server on the remote machine and links it with the local VS Code client. Consequently, code can be written and managed on a local development machine while being executed remotely on the supercomputer. This workflow was essential because the computational resources required to run experiments exceeded the capabilities of a standard local developer machine.
+
+The repository has a README.md file, which contains instructions on how to set up an environment. The recommended approach is by using uv, a Python dependency management solution, but the project is compatible with pip as well, but I do not recommend it for the reasons stated in @section-pip-poetry-uv.
+
+== Core Technology Choice Decisions
+
+At the heart of the project is the Python framework PyTorch and the dependency manager `uv`. I chose these technologies
 
 === Choosing The Right Backend
 
@@ -643,38 +655,36 @@ I evaluated three machine learning frameworks (backends) for this project, speci
 
 Secondly, the work of this thesis is based off of the unpublished manuscript _Learning Glyph Value Estimation via Pairwise Comparison_, where they also used PyTorch, so it was easier to extend their solution that was already written in PyTorch #cite(<BibMohanedPairwise>).
 
-== pip vs. Poetry vs. uv
+=== pip vs. Poetry vs. uv <section-pip-poetry-uv>
 
-I was choosing between pip, Poetry, and uv.
+I evaluated three approaches for Python dependency and environment management: pip, Poetry, and uv.
 
-Pip is the old classic. It's not bad, but it has the problem that if a package is no longer needed, removing it from `requirements.txt` does not remove it from the `.venv` environment. Running `pip install -r requirements.txt` only installs missing packages; it doesn't sync the environment to exactly match the file. Because of this, the environment can slowly become polluted with unused orphaned dependencies unless I manually uninstall them or periodically delete and recreate the entire .venv.
+Pip is the standard package installer for Python and remains widely used throughout the Python ecosystem. However, dependency management using `requirements.txt` files has several limitations regarding environment reproducibility and synchronization. Running `pip install -r requirements.txt` installs or updates packages required by the project, but it does not guarantee that the virtual environment exactly matches the contents of the file. Packages that are removed from the dependencies aren't automatically removed from the environment by pip. Over time, this can lead to virtual environments containing orphaned dependencies unless they are either manually uninstalled or the entire environment removed and re-created.
 
-Poetry is more modern and uses the pyproject.toml format for dependency management. Declaring dependencies this way is really nice because the project dependencies become centralized and reproducible through pyproject.toml and poetry.lock. Poetry can also keep the virtual environment synchronized with those files when using its install/sync workflow, which helps ensure all developers work in a consistent environment.
+Poetry provides a more modern dependency management workflow based on the standardized `pyproject.toml` format. The dependencies are declared inside this file, and Poetry is able to synchronize the virtual environment with the declared dependencies inside the `pyproject.toml` file. Despite this advantage, I did not choose Poetry as the main dependency management system because it does not natively support Python interpreter installations. Poetry relies on the Python binaries installed on the system, which can make it difficult for a developer to set up their environment if the project requires a specific Python version. Poetry does support the ```toml requires-python = ">=3.13"``` specification inside the `pyproject.toml` file, however, this only prevents the code from being run with an incorrect version of the interpreter, it does not help the developer with installing the interpreter into their machine.
 
-The reason I ultimately did not choose Poetry is that it does not install or manage Python versions itself. It uses Python interpreters that are already installed on the system. Inside pyproject.toml, you can restrict which Python versions the project supports:
+In the end, I chose uv as the main dependency manager, because it's modern, fast (written in Rust), and offers all the features of Poetry, as well as Python interpreter management. The version of the interpreter can be specified inside a file called `.python-version`, and uv will automatically install the interpreter before running any Python code.
 
-```
-requires-python = ">=3.13"
-```
+== Organization of The Codebase
 
-However, this only validates compatibility; the developer still has to manually install the correct Python version on their machine, which can be tedious depending on the OS.
+The codebase is organized as a standard Python library. In the root directory, there is a `pyproject.toml` file containing the dependencies as well as project information. This file is needed as it also specifies the build system to use when packaging the library. For compatibility reasons, a `requirements.txt` file is automatically generated from the dependencies specified in the `pyproject.toml` file before each Git commit using the pre-commit program.
 
-On the other hand, uv supports integrated Python version management. It can use a .python-version file to specify the Python version for the project, automatically download that version if needed, and run the project with it. This greatly improves reproducibility because every developer can use the exact same Python version and dependency environment, reducing the chance of environment-specific bugs.
+Inside the `src/mglyph_ml` directory lies all the code of the `mglyph_ml` library. This library is the local library and it is important that it stays in a directory with the same name in order to be processed by uv as a Python library. This library doesn't contain any runnable files. This is because the entire project is heavily based on Jupyter notebooks. The only runnable files containing Python code are Jupyter notebooks contained inside the `notebooks/` directory. Inside this directory, there are notebooks for generating datasets, explained in @chapter-creating-datasets, as well as notebooks for running experiments, explained in @chapter-experiments. If these notebooks are run in VS Code, there is a setting inside `.vscode/settings.json` which sets the notebooks' default working directory to the root of the project instead of the local folder of the Jupyter notebook.
 
-I also chose uv because it is significantly faster than Poetry due to being written in Rust, and it provides a lot of very useful built-in commands for dependency and environment management.
+I used the directory `data/` for storing datasets, and this directory is ignored by Git, because datasets should not be comitted to the repository.
 
-=== Using `uv`
+=== Using Environment Variables for Specifying Developer-specific Configurations
+
+At the root of the repository, is a file called `.env.template`. I used a Python library called python-dotenv to inject environment variables into the Jupyter notebooks. I chose this approach because I believe it's incorrect to store environment- and machine-specific data inside the Git repository. The `.env.template` file serves as a template and a copy named `.env` needs to be created before being able to run the Jupyter notebooks. Currently, this file contains these configurations:
+
+- `MGML_DEVICE` (`str`): which device to run the training on,
+- `DATA_LOADER_NUM_WORKERS` (`int`): number of workers for the data loader.
+
+=== Using uv
 
 First of all, if you wanna run anything using uv, you can run it using `uv run ...`, so for example `uv run python main.py`. This run the Python file using the interpreter located at `.venv/bin/python` instead of the system binary.
 
 idk if i wanna mention anything else about uv... #TODO[find out if mentioning anything else about `uv` is useful]
-
-=== Using Environment Variables for Specifying Developer-specific Configurations
-
-I am using the file `.env` located in the root of the project. This file can be created by creating a copy of the `.env.template` file. This file is useful because it isn't committed to the Git repository and thus stays on the developer's machine and the developer can specify their own machine-specific settings. In my case, there's only a single setting located in the .env file, and that is:
-
-- `MGML_DEVICE`: It's used to specify the device for training
-
 
 == Software Architecture:
 
