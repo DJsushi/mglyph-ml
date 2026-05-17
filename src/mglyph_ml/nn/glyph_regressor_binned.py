@@ -15,9 +15,6 @@ def _scaled_channels(base_channels: int, width_mult: float) -> int:
 class BinnedGlyphRegressor(GlyphPredictorBase):
     """
     Regresses x via classification over fixed-width bins.
-
-    Labels in this project are normalized to [0, 1] (x / 100.0), so binning is
-    done in x-space and converted back to normalized space when needed.
     """
 
     def __init__(
@@ -25,6 +22,7 @@ class BinnedGlyphRegressor(GlyphPredictorBase):
         image_resolution: tuple[int, int] = (64, 64),
         num_divisions: int = 5,
         width_mult: float = 1,
+        dropout: float = 0.00,
         use_new_centroid_distribution: bool = True,
     ):
         super().__init__()
@@ -35,6 +33,8 @@ class BinnedGlyphRegressor(GlyphPredictorBase):
             raise ValueError("image_resolution values must be > 0")
         if width_mult <= 0.0:
             raise ValueError("width_mult must be > 0")
+        if not 0.0 <= dropout < 1.0:
+            raise ValueError("dropout must be in [0.0, 1.0)")
 
         c1 = _scaled_channels(32, width_mult)
         c2 = _scaled_channels(64, width_mult)
@@ -44,6 +44,7 @@ class BinnedGlyphRegressor(GlyphPredictorBase):
         self.bin_size_x = 100.0 / self.num_bins
         self.image_resolution = image_resolution
         self.width_mult = width_mult
+        self.dropout = dropout
 
         self.features = nn.Sequential(
             nn.Conv2d(3, c1, kernel_size=3, padding=1),
@@ -68,19 +69,19 @@ class BinnedGlyphRegressor(GlyphPredictorBase):
             nn.Flatten(),
             nn.Linear(flattened_features, 256),
             nn.ReLU(),
+            nn.Dropout(p=self.dropout),
             nn.Linear(256, self.num_bins),
         )
 
-        # Use true bin midpoints so centers align with labels_to_bins binning.
-        bin_center_distance = 100 / num_divisions
+        centroid_distance = 100 / num_divisions
         centroid_count = num_divisions + 3
 
         if use_new_centroid_distribution:
-            bin_centers_x = torch.linspace(-bin_center_distance, 100 + bin_center_distance, centroid_count)
+            centroids_x = torch.linspace(-centroid_distance, 100 + centroid_distance, centroid_count)
         else:
-            bin_centers_x = torch.linspace(0, 100, centroid_count)
+            centroids_x = torch.linspace(0, 100, centroid_count)
 
-        self.register_buffer("bin_centers_x", bin_centers_x)
+        self.register_buffer("centroids_x", centroids_x)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.features(x)
@@ -97,9 +98,9 @@ class BinnedGlyphRegressor(GlyphPredictorBase):
         """
         Convert logits to regression output in [0, 100].
         """
-        bin_centers_x = cast(torch.Tensor, self.bin_centers_x)
+        centroids_x = cast(torch.Tensor, self.centroids_x)
         probs = torch.softmax(logits, dim=1)
-        return torch.clamp(torch.sum(probs * bin_centers_x, dim=1), 0.0, 100.0)
+        return torch.clamp(torch.sum(probs * centroids_x, dim=1), 0.0, 100.0)
 
     def predict(self, x: torch.Tensor) -> torch.Tensor:
         """

@@ -48,7 +48,6 @@ class GlyphRegressorGen3(GlyphPredictorBase):
             nn.Linear(256, 64),
             nn.ReLU(inplace=True),
             nn.Linear(64, 1),
-            nn.Sigmoid(),
         )
 
     def forward(self, x):
